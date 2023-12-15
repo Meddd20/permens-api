@@ -1,0 +1,71 @@
+<?php
+
+return [
+    "name" => "Name",
+    "birthday" => "Date of Birth",
+    "email" => "Email",
+    "password" => "Password",
+    "new_password" => "New Password",
+    "new_password_confirmation" => "New Password Confirmation",
+    "type" => "Verification Type",
+    "user_role" => "User Role",
+    "verif_code" => "Verification Code",
+
+    "day_after_period" => "First Day of The Last Period",
+    "period_cycle" => "Period Cycle",
+    "period_duration" => "Period Duration",
+
+    "parent_id" => "Comment Parent Id",
+    "article_id" => "Article Id",
+    "content" => "Content",
+
+    "date" => "Date",
+    "pregnancy_signs" => "Pregnancy Signs",
+    "sex_activity" => "Sex Activity",
+    "symptoms" => "Symptoms",
+    "vaginal_discharge" => "Vaginal Discharge",
+    "moods" => "Moods",
+    "others" => "Others",
+    "temperature" => "Temperature",
+    "weight" => "Weight",
+    "reminder" => "Reminder",
+    "notes" =>"Notes",
+
+    "writter" => "Writter",
+    "title_ind" => "Title in Indonesia",
+    "title_eng" => "Tittle in English",
+    "slug_title_ind" => "Slug in Indonesia",
+    "slug_title_eng" => "Slug in English",
+    "banner" => "Banner",
+    "content_ind" => "Content in Indonesia",
+    "content_eng" => "Content in English",
+    "video_link" => "Video Link",
+    "source" => "Source",
+    "tags" => "Tags",
+
+    "year" => "Year Period",
+    "period_id" => "Period",
+
+    'period_end' => "Last Period",
+    'pregnant_begin' => "First Day of Pregnant",
+    'description' => "Description",
+    'pregnancy_status' => "Last Period",
+    'pregnant_end' => "Last Day of Pregnant",
+
+    'first_period' => "First Period",
+    'last_period' => "Last Period",
+    'is_actual' => "Period Status",
+    'period_cycle' => "Period Cycle",
+    'period_id' => "Period",
+
+    "age" => "Age",
+    'childbirth' => "Childbirth",
+    "children" => "Children Number",
+    "complaint" => "Complaint",
+    "contraceptive" => "Contraceptive",
+    "contraceptive_tool" => "Contraceptive Tool",
+    "first_haid" => "First Haid",
+    "last_haid" => "Last Haid",
+    "married" => "Married Status",
+    
+];
