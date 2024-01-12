@@ -11,6 +11,8 @@ class RiwayatKehamilan extends Model
 
     protected $table = 'tb_riwayat_kehamilan';
 
+    public $incrementing = false;
+
     protected $fillable = [
         'user_id',
         'status',

@@ -39,13 +39,14 @@ Route::post('auth/requestverification', [AuthController::class, 'requestVerifica
 Route::post('auth/verifyverification', [AuthController::class, 'verifyVerificationCode']);
 
 Route::post('calc/instans', [QuickCalController::class, 'calc']);
+Route::post('period/store-period', [PeriodController::class, 'storePeriod']);
 
 Route::middleware("validate_user")->group(function() {
     Route::post('period/index', [MainController::class, 'index']);
     Route::post('period/index/filter', [MainController::class, 'filter']);
     Route::post('period/insight', [MainController::class, 'insight']);
-
-    Route::post('period/store-period', [PeriodController::class, 'storePeriod']);
+    Route::post('period/date-event', [MainController::class, 'currentDateEvent']);
+    
     Route::patch('period/update-period', [PeriodController::class, 'updatePeriod']);
     Route::post('period/store-prediction', [PeriodController::class, 'storePrediction']);
 

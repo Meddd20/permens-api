@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Engine;
 use App\Http\Controllers\Controller;
 use App\Models\Komentar;
 use App\Models\Login;
+use App\Models\UToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
@@ -33,8 +34,8 @@ class CommentController extends Controller
             ], 400);
         }
 
-        $user = Login::where('id', $request->header('user_id'))->first();
-        $user_id = $user->id;
+        $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
+        $user = Login::where('id', $user_id)->first();
         $parent_comment_user_id = null;
 
         if (!$user) {

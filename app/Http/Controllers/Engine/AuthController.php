@@ -36,7 +36,7 @@ class AuthController extends Controller
                 'max:190',
             ],
             'password' => "required|min:8"
-        ];
+        ];  
         $messages = [];
         $attributes = [
             'name' => __('attribute.name'),
@@ -61,12 +61,13 @@ class AuthController extends Controller
             ], 400);
         }
 
-        # Saving into Database
-        DB::beginTransaction();
+        try {
+            DB::beginTransaction();
+        
             $existingData = Login::where('email', $request->email)
-                -> where('status', 'Unverified')
-                -> first();
-
+                ->where('status', 'Unverified')
+                ->first();
+        
             if ($existingData) {
                 $existingData->update([
                     'nama' => $request->name,
@@ -74,6 +75,8 @@ class AuthController extends Controller
                     'tanggal_lahir' => date("Y-m-d", strtotime($request->birthday)),
                     'pwd' => bcrypt($request->password),
                 ]);
+        
+                $data = $existingData;
             } else {
                 $login = Login::create([
                     'nama' => $request->name,
@@ -82,25 +85,37 @@ class AuthController extends Controller
                     'email' => $request->email,
                     'pwd' => bcrypt($request->password),
                 ]);
+        
+                $data = $login;
             }
-        DB::commit();
+        
+            DB::commit();
+        
+            return response()->json([
+                "status" => "success",
+                "message" => __('response.getting_data'),
+                "data" => $data,
+            ], 200);
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return response()->json([
+                "status" => "failed",
+                "message" => "Failed to get data".' | '.$th->getMessage(),
+            ], 400);
+        }
+        
 
-        $verificationData = [
-            "email" => $request->email,
-            "type" => "Verifikasi",
-            "user_role" => "User"
-        ];
+        # Saving into Database
+        
 
-        // $verificationRequest = Request::create('requestVerificationCode', 'POST', $verificationData);
-        // $verificationRequest->headers->set('Accept', 'application/json');
-        // $verificationRequest->headers->set('token', "yghMCYkYmtX6YcHdw8lyL2WpQh1IVCiEBIuqOt3r2XTKZNgnuRzYA1XxteNN");
+        // $verificationData = [
+        //     "email" => $request->email,
+        //     "type" => "Verifikasi",
+        //     "user_role" => "User"
+        // ];
 
-        // $response = Route::dispatch($verificationRequest);
-
-        // $responseContent = $response->getContent();
-
-        $verificationRequest = new Request($verificationData);
-        $response = $this->requestVerificationCode($verificationRequest);
+        // $verificationRequest = new Request($verificationData);
+        // $response = $this->requestVerificationCode($verificationRequest);
 
         if (!empty($response)) {
             return response()->json([
@@ -232,14 +247,25 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        if (!$request->header('token')) {
+        $token = $request->header('user_id');
+
+        if (!$token) {
             return response()->json([
                 "status" => "failed",
                 "message" => __('response.token')
             ], 403);
         }
 
-        $utoken = UToken::where('token', $request->token)->delete();
+        $utoken = UToken::where('token', $token)->first();
+
+        if (!$utoken) {
+            return response()->json([
+                "status" => "failed",
+                "message" => __('response.invalid_token')
+            ], 403);
+        }
+
+        $utoken->delete();
 
         return response()->json([
             "status" => "success",
@@ -266,7 +292,8 @@ class AuthController extends Controller
             ], 400);
         }
 
-        $user = Login::where('id', $request->header('user_id'))->first();
+        $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
+        $user = Login::where('id', $user_id)->first();
 
         if (!$user) {
             return response()->json([
@@ -301,7 +328,8 @@ class AuthController extends Controller
     public function showProfile()
     {
         try {
-            $user = Login::where('id', request()->header('user_id'))->first();
+            $user_id = UToken::where('token', request()->header('user_id'))->value('user_id');
+            $user = Login::where('id', $user_id)->first();
     
             if (!$user) {
                 return response()->json([
@@ -325,7 +353,8 @@ class AuthController extends Controller
 
     public function deleteAccount(Request $request)
     {
-        $user = Login::where('id', $request->header('user_id'))->first();
+        $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
+        $user = Login::where('id', $user_id)->first();
 
         if (!$user) {
             return response()->json([
@@ -515,22 +544,18 @@ class AuthController extends Controller
                 $account_verif->percobaan++;
                 $account_verif->kadaluarsa = $kadaluarsa;
                 $account_verif->save();
-
-                return response()->json([
-                    'message' => $account_verif
-                ], 200);
+                $data = $account_verif;
             }else{
                 $account_verif_new['percobaan'] = 1;
                 $account_verif_new['kadaluarsa'] = $kadaluarsa;
                 Verifikasi::create($account_verif_new);
-                return response()->json([
-                    'message' => $account_verif_new
-                ], 200);
+                $data = $account_verif_new;
             }
             
             return response()->json([
                 'status' => 'success',
                 'message' => __('response.verification_email_success'),
+                'data' => $data
             ], 200);
         } catch (\Throwable $th) {
             return response()->json([

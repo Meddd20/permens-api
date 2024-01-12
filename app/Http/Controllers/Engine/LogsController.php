@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
 use App\Models\RiwayatLog;
+use App\Models\UToken;
 
 class LogsController extends Controller
 {
@@ -51,10 +52,10 @@ class LogsController extends Controller
             ], 400);
         }
     
-        $uid = $request->header('user_id');
+        $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
         $dateToCheck = $request->input('date');
     
-        $userData = RiwayatLog::where('user_id', $uid)->first();
+        $userData = RiwayatLog::where('user_id', $user_id)->first();
     
         $newData = [
             "date" => $dateToCheck,
@@ -87,7 +88,7 @@ class LogsController extends Controller
             ];
 
             $userData = new RiwayatLog();
-            $userData->user_id = $uid;
+            $userData->user_id = $user_id;
             $userData->data_harian = $userDataArray;
             $userData->save();
         }
@@ -95,17 +96,17 @@ class LogsController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Daily log '.$message.' successfully',
-            'user_id' => $uid,
+            'user_id' => $user_id,
             'data' => $userDataArray
         ]);
     }
 
     public function deleteLogByDate(Request $request) {
-        $uid = $request->header('user_id');
+        $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
         $dateToDelete = $request->input('date');
     
         // Cari data pengguna berdasarkan ID pengguna dan tanggal yang akan dihapus
-        $userData = RiwayatLog::where('user_id', $uid)->first();
+        $userData = RiwayatLog::where('user_id', $user_id)->first();
     
         if ($userData) {
             $userDataArray = $userData->data_harian;
@@ -138,8 +139,8 @@ class LogsController extends Controller
     }    
 
     public function allLogs(Request $request) {
-        $uid = $request->header('user_id');
-        $userData = RiwayatLog::where('user_id', $uid)->first();
+        $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
+        $userData = RiwayatLog::where('user_id', $user_id)->first();
     
         if (!$userData) {
             return response()->json([
@@ -149,14 +150,14 @@ class LogsController extends Controller
         }
     
         return response()->json([
-            'user_id' => $uid,
+            'user_id' => $user_id,
             'data' => $userData->data_harian
         ]);
     }
 
     public function logsByDate(Request $request, $date) {
-        $uid = $request->header('user_id');
-        $userData = RiwayatLog::where('user_id', $uid)->first();
+        $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
+        $userData = RiwayatLog::where('user_id', $user_id)->first();
     
         if (!$userData) {
             return response()->json([
@@ -169,7 +170,7 @@ class LogsController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => __('response.log_retrieved_success'),
-                'user_id' => $uid,
+                'user_id' => $user_id,
                 'date' => $date,
                 'data' => $userData->data_harian[$date]
             ]);
@@ -182,8 +183,8 @@ class LogsController extends Controller
     }
 
     public function logsByTags(Request $request, $tags) {
-        $uid = $request->header('user_id');
-        $userData = RiwayatLog::where('user_id', $uid)->first();
+        $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
+        $userData = RiwayatLog::where('user_id', $user_id)->first();
     
         if (!$userData) {
             return response()->json([
@@ -203,7 +204,7 @@ class LogsController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => __('response.log_retrieved_success'),
-            'user_id' => $uid,
+            'user_id' => $user_id,
             'tags' => $tags,
             'values' => $tagsValues
         ]);
