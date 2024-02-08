@@ -10,7 +10,6 @@ return [
 
     "age_validation" => "Age not sufficient, you must be at least 18 years old to register.",
     "regis_success" => "A verification code has been emailed to your email address.",
-    "regis_failed" => "Registration failed. Check your input",
     "account_disactive" => "Account has been disactived",
     "login_success" => "Login successful",
     "login_failed" => "Login failed. Email or password is incorrect",
@@ -58,7 +57,24 @@ return [
     "period_history_not_found" => "Period history not found",
     "period_too_fast" => "Period cycle is too fast. Please contact doctor",
     "add_period_failed" => "Menstrual Cycle Cannot Be Added. Please add a previous menstrual cycle.",
+    "diffInDays" => "The difference between the start and end of the period should not be more than 10 days.",
+    "period_not_found" => "Period cycle not found",
 
     "update_success" => "Data updated successfully",
+
+    "pregnancy_not_found" => "Pregnancy Not Found",
+    "pregnancy_updated_success" => "Pregnancy updated successfully",
+    "pregnancy_updated_failed" => "Pregnancy update failed",
+    "pregnancy_deleted_success" => "Pregnancy deleted successfully",
+    "pregnancy_deleted_failed" => "Pregnancy delete failed",
+    "pregnancy_retrieved_success" => "Pregnancy retrieved successfully",
+    
+
+    "first_period_required" => "The first period is required.",
+    "first_period_format" => "The first period must be in the correct format.",
+    "first_period_max_today" => "The first period must be on or before today.",
+    "last_period_required" => "The last period is required.",
+    "last_period_format" => "The last period must be in the correct format.",
+    "last_period_after_first" => "The last period must be after the first period.",
 
 ];

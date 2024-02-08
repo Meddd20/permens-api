@@ -8,12 +8,10 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Controllers\Controller;
-use App\Models\Login;
 
 class NewsController extends Controller
 {
     public function createNews(Request $request) {
-
         # Input Validations
         $rules = [
             "writter" => "required|string|max:100",

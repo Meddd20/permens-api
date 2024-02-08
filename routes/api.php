@@ -8,8 +8,6 @@ use App\Http\Controllers\Engine\PeriodController;
 use App\Http\Controllers\Engine\PregnancyController;
 use App\Http\Controllers\Engine\QuickCalController;
 use App\Http\Controllers\Engine\NewsController;
-use App\Http\Controllers\Engine\ProfileController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -44,20 +42,23 @@ Route::post('period/store-period', [PeriodController::class, 'storePeriod']);
 Route::middleware("validate_user")->group(function() {
     Route::post('period/index', [MainController::class, 'index']);
     Route::post('period/index/filter', [MainController::class, 'filter']);
-    Route::post('period/insight', [MainController::class, 'insight']);
+    Route::post('pregnancy/index', [MainController::class, 'pregnancyIndex']);
     Route::post('period/date-event', [MainController::class, 'currentDateEvent']);
+    // Route::post('period/insight', [MainController::class, 'insight']);
     
     Route::patch('period/update-period', [PeriodController::class, 'updatePeriod']);
     Route::post('period/store-prediction', [PeriodController::class, 'storePrediction']);
 
-    Route::post('period/pregnancy-begin', [PregnancyController::class, 'pregnancyBegin']);
-    Route::post('period/pregnancy-end', [PregnancyController::class, 'pregnancyEnd']);
+    Route::post('pregnancy/begin', [PregnancyController::class, 'pregnancyBegin']);
+    Route::post('pregnancy/end', [PregnancyController::class, 'pregnancyEnd']);
+    Route::post('pregnancy/edit', [PregnancyController::class, 'editHPHT']);
+    Route::post('pregnancy/delete', [PregnancyController::class, 'deletePregnancy']);
 
     Route::patch('daily-log/update-log', [LogsController::class, 'storeLog']);
     Route::delete('daily-log/delete-log', [LogsController::class, 'deleteLogByDate']);
     Route::get('daily-log/read-all-log', [LogsController::class, 'alllogs']);
-    Route::get('daily-log/read-log-by-date/{date}', [LogsController::class, 'logsbydate']);
-    Route::get('daily-log/read-log-by-tag/{tags}', [LogsController::class, 'logsByTags']);
+    Route::get('daily-log/read-log-by-date', [LogsController::class, 'logsbydate']);
+    Route::get('daily-log/read-log-by-tag', [LogsController::class, 'logsByTags']);
 
     Route::get('articles/show-articles/{id}', [NewsController::class, 'showNews']);
     Route::get('articles/show-all-articles', [NewsController::class, 'showAllNews']);

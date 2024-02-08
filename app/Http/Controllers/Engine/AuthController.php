@@ -10,14 +10,10 @@ use App\Models\Verifikasi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
-
-use function PHPUnit\Framework\isEmpty;
 
 class AuthController extends Controller
 {
@@ -72,6 +68,7 @@ class AuthController extends Controller
                 $existingData->update([
                     'nama' => $request->name,
                     'status' => 'Unverified',
+                    'role' => 'User',
                     'tanggal_lahir' => date("Y-m-d", strtotime($request->birthday)),
                     'pwd' => bcrypt($request->password),
                 ]);
@@ -81,6 +78,7 @@ class AuthController extends Controller
                 $login = Login::create([
                     'nama' => $request->name,
                     'status' => 'Unverified',
+                    'role' => 'User',
                     'tanggal_lahir' => date("Y-m-d", strtotime($request->birthday)),
                     'email' => $request->email,
                     'pwd' => bcrypt($request->password),
@@ -101,31 +99,6 @@ class AuthController extends Controller
             return response()->json([
                 "status" => "failed",
                 "message" => "Failed to get data".' | '.$th->getMessage(),
-            ], 400);
-        }
-        
-
-        # Saving into Database
-        
-
-        // $verificationData = [
-        //     "email" => $request->email,
-        //     "type" => "Verifikasi",
-        //     "user_role" => "User"
-        // ];
-
-        // $verificationRequest = new Request($verificationData);
-        // $response = $this->requestVerificationCode($verificationRequest);
-
-        if (!empty($response)) {
-            return response()->json([
-                "status" => "success",
-                "response" => $response,
-            ], 200);
-        } else {
-            return response()->json([
-                "status" => "failed",
-                "message" => __('response.regis_failed')
             ], 400);
         }
     }
@@ -170,48 +143,48 @@ class AuthController extends Controller
             ], 400);
         }
 
-        # Saving into Database
-        DB::beginTransaction();
-        $existingData = Login::where('email', $request->email)
-            -> where('status', 'Unverified')
-            -> first();
+        try {
+            DB::beginTransaction();
 
-        if ($existingData) {
-            $existingData->update([
-                'nama' => $request->name,
-                'status' => 'Unverified',
-                'tanggal_lahir' => date("Y-m-d", strtotime($request->birthday)),
-                'pwd' => bcrypt($request->password),
-            ]);
-        } else {
-            $login = Login::create([
-                'nama' => $request->name,
-                'status' => 'Unverified',
-                'tanggal_lahir' => date("Y-m-d", strtotime($request->birthday)),
-                'email' => $request->email,
-                'pwd' => bcrypt($request->password),
-            ]);
-        }
-        DB::commit();
+            $existingData = Login::where('email', $request->email)
+                -> where('status', 'Unverified')
+                -> first();
 
-        $verificationData = [
-            "email" => $request->email,
-            "type" => "Verifikasi",
-            "user_role" => "User"
-        ];
+            if ($existingData) {
+                $existingData->update([
+                    'nama' => $request->name,
+                    'status' => 'Unverified',
+                    'role' => 'Admin',
+                    'tanggal_lahir' => date("Y-m-d", strtotime($request->birthday)),
+                    'pwd' => bcrypt($request->password),
+                ]);
 
-        $verificationRequest = new Request($verificationData);
-        $response = $this->requestVerificationCode($verificationRequest);
+                $data = $existingData;
+            } else {
+                $login = Login::create([
+                    'nama' => $request->name,
+                    'status' => 'Unverified',
+                    'role' => 'Admin',
+                    'tanggal_lahir' => date("Y-m-d", strtotime($request->birthday)),
+                    'email' => $request->email,
+                    'pwd' => bcrypt($request->password),
+                ]);
 
-        if (!empty($response)) {
+                $data = $login;
+            }
+
+            DB::commit();
+
             return response()->json([
                 "status" => "success",
-                "response" => $response,
+                "message" => __('response.getting_data'),
+                "data" => $data,
             ], 200);
-        } else {
+        } catch (\Throwable $th) {
+            DB::rollBack();
             return response()->json([
                 "status" => "failed",
-                "message" => __('response.regis_failed')
+                "message" => "Failed to get data".' | '.$th->getMessage(),
             ], 400);
         }
     }
@@ -261,7 +234,7 @@ class AuthController extends Controller
         if (!$utoken) {
             return response()->json([
                 "status" => "failed",
-                "message" => __('response.invalid_token')
+                "message" => __('response.token_unauth')
             ], 403);
         }
 

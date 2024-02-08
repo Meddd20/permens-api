@@ -15,13 +15,12 @@ class RiwayatMens extends Model
 
     protected $fillable = [
         'user_id',
-        'usia',
-        'usia_lunar',
         'haid_awal',
         'haid_akhir',
         'ovulasi',
         'masa_subur_awal',
         'masa_subur_akhir',
+        'hari_terakhir_siklus',
         'lama_siklus',
         'durasi_haid',
         'haid_berikutnya_awal',
@@ -29,6 +28,7 @@ class RiwayatMens extends Model
         'ovulasi_berikutnya',
         'masa_subur_berikutnya_awal',
         'masa_subur_berikutnya_akhir',
+        'hari_terakhir_siklus_berikutnya',
         'is_actual'
     ];
 

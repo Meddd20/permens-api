@@ -69,7 +69,6 @@ class QuickCalController extends Controller
             } else {
                 $master_kehamilan = MasterKehamilan::where('minggu_kehamilan', $pregnancy_weeks)->first();
                 $berat_janin = $master_kehamilan->berat_janin;
-                $pertambahan_berat_ibu = $master_kehamilan->pertambahan_berat_ibu;
                 $tinggi_badan_janin = $master_kehamilan->tinggi_badan_janin;
             }
     

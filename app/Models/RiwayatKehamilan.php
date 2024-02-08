@@ -16,10 +16,9 @@ class RiwayatKehamilan extends Model
     protected $fillable = [
         'user_id',
         'status',
-        'haid_terakhir',
-        'kehamilan_awal',
+        'hari_pertama_haid_terakhir',
+        'tanggal_perkiraan_lahir',
         'kehamilan_akhir',
-        'keterangan'
     ];
 
     public function login()
