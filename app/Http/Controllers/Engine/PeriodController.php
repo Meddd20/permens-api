@@ -104,7 +104,7 @@ class PeriodController extends Controller
             $period_start = Carbon::parse($periods[$i]['first_period']);
             $period_end = Carbon::parse($periods[$i]['last_period']);
 
-            if ($period_start->diffInDays($period_end) > 10) {
+            if ($period_start->diffInDays($period_end) < 1) {
                 return response()->json([
                     "status" => "failed",
                     "message" => __('response.period.diffInDays'),
@@ -112,9 +112,239 @@ class PeriodController extends Controller
             }
         }
 
-        for ($i = 0; $i < $periodsCount; $i++) {
-            try {
-                DB::beginTransaction();
+        // for ($i = 0; $i < $periodsCount; $i++) {
+        //     try {
+        //         DB::beginTransaction();
+        //         # Inisialisasi variabel-variabel
+        //         $period_cycle = null;
+        //         $avg_period_cycle = null;
+        //         $siklus_tengah_haid = null;
+        //         $last_period_cycle = null;
+        //         $last_day_cycle = null;
+            
+        //         # Start & End Period from Input
+        //         $period_start = Carbon::parse($periods[$i]['first_period']);
+        //         $period_end = Carbon::parse($periods[$i]['last_period']);
+            
+        //         $period_history = RiwayatMens::where('user_id', $user_id)
+        //             ->where('is_actual', '1')
+        //             ->where('haid_awal', '<=', $period_start)
+        //             ->get();
+                
+        //         # Period Validation When Period History is Empty
+        //         if (count($period_history) < 1 && $i == 0) {
+        //             $period_cycle = $request->period_cycle;
+        //             $avg_period_cycle = $request->period_cycle;
+        //             $siklus_tengah_haid = ceil($period_cycle / 2);
+
+        //             $next_period = RiwayatMens::where('user_id', $user_id)
+        //                 ->where('is_actual', '1')
+        //                 ->where('haid_awal', '>=', $period_start)
+        //                 ->orderBy('haid_awal', 'ASC')
+        //                 ->first();
+
+        //             if (!empty($next_period)) {
+        //                 $next_cycle_period_start = Carbon::parse($next_period->haid_awal);
+
+        //                 if ($period_start->diffInDays($next_cycle_period_start->subDay(1)) > 1) {
+        //                     $period_cycle = $period_start->diffInDays($next_cycle_period_start);
+        //                     $last_day_cycle = $next_cycle_period_start->subDay(1);
+        //                 }
+        //             }
+
+        //         } else {
+        //             $period_start = Carbon::parse($period_start);
+
+        //             $last_period = RiwayatMens::where('user_id', $user_id)
+        //                             ->where('is_actual', '1')
+        //                             ->where('haid_awal', '<=', $period_start)
+        //                             ->orderBy('haid_awal', 'DESC')
+        //                             ->first();
+
+        //             $next_period = RiwayatMens::where('user_id', $user_id)
+        //                             ->where('is_actual', '1')
+        //                             ->where('haid_awal', '>=', $period_start)
+        //                             ->orderBy('haid_awal', 'ASC')
+        //                             ->first();
+
+        //             if (!empty($last_period)) {
+        //                 $last_cycle_period_start = Carbon::parse($last_period->haid_awal);
+        //                 $period_gaps = Carbon::parse($period_start)->diffInDays(Carbon::parse($last_cycle_period_start));
+
+        //                 if ($period_gaps < 20) {
+        //                     return response()->json([
+        //                         "status" => "failed",
+        //                         "message" => __('response.period_too_fast'),
+        //                     ], 400);
+        //                 }
+
+        //                 $last_period_cycle = Carbon::parse($last_cycle_period_start)->diffInDays(Carbon::parse($period_start)->subDay(1));
+        //                 $last_period->update([
+        //                     'lama_siklus' => $last_period_cycle,
+        //                     'hari_terakhir_siklus' => Carbon::parse($period_start)->subDay(1),
+        //                     'hari_terakhir_siklus_berikutnya' => Carbon::parse($last_period->haid_berikutnya_awal)->addDay($avg_period_cycle),
+        //                 ]);
+        //             }
+
+        //             if (!empty($next_period)) {
+        //                 $next_cycle_period_start = Carbon::parse($next_period->haid_awal);
+        //                 $period_gaps = Carbon::parse($period_start)->diffInDays(Carbon::parse($next_cycle_period_start));
+                    
+        //                 if ($period_gaps < 20) {
+        //                     return response()->json([
+        //                         "status" => "failed",
+        //                         "message" => __('response.period_too_fast'),
+        //                     ], 400);
+        //                 }
+                    
+        //                 $period_cycle = Carbon::parse($period_start)->diffInDays(Carbon::parse($next_cycle_period_start)->subDay(1));
+        //                 $last_day_cycle = Carbon::parse($next_cycle_period_start)->subDay(1);
+        //             }
+
+        //             $avg_period_cycle = ceil(
+        //                 RiwayatMens::where('user_id', $user_id)
+        //                     ->where('is_actual', '1')
+        //                     ->whereNotNull('lama_siklus')
+        //                     ->where('haid_awal', '<', $period_start)
+        //                     ->sum('lama_siklus') /
+        //                 RiwayatMens::where('user_id', $user_id)
+        //                     ->where('is_actual', '1')
+        //                     ->whereNotNull('lama_siklus')
+        //                     ->where('haid_awal', '<', $period_start)
+        //                     ->count()
+        //             );
+                    
+        //             $siklus_tengah_haid = ceil($avg_period_cycle / 2);
+
+        //             $existingPrediction = RiwayatMens::where('user_id', $user_id)
+        //                 ->where('haid_awal', '>=', Carbon::parse($period_start)->subDays(20))
+        //                 ->where('haid_awal', '<=', Carbon::parse($period_start)->addDays(20))
+        //                 ->where('is_actual', '0')
+        //                 ->delete();
+
+        //             $prediction_before = RiwayatMens::where('user_id', $user_id)
+        //                 ->where('haid_awal', '<=', $period_start)
+        //                 ->where('is_actual', '0')
+        //                 ->delete();
+        //         }
+
+        //         # Period Duration from Input
+        //         $period_duration = Carbon::parse($period_end)->diffInDays(Carbon::parse($period_start)) + 1;
+
+        //         # Ovulasi
+        //         $ovulasi = Carbon::parse($period_start)->addDays($siklus_tengah_haid)->toDateString();
+
+        //         # Masa Subur Awal
+        //         $masa_subur_awal = Carbon::parse($ovulasi)->subDays(5)->toDateString();
+
+        //         # Masa Subur Akhir
+        //         $masa_subur_akhir = Carbon::parse($ovulasi)->addDays(2)->toDateString();
+
+        //         # Next Period End
+        //         $next_period_start = Carbon::parse($period_start)->addDays($avg_period_cycle)->toDateString();
+
+        //         # Next Period End
+        //         $next_period_end = Carbon::parse($period_start)->addDays($avg_period_cycle + $period_duration)->toDateString();
+
+        //         # Next Ovulasi
+        //         $next_ovulation = Carbon::parse($next_period_start)->addDays($siklus_tengah_haid)->toDateString();
+
+        //         # Next Cycle End
+        //         $next_cycle_end = Carbon::parse($next_period_start)->addDay($avg_period_cycle);
+
+        //         $period_history = RiwayatMens::create([
+        //             'user_id' => $user_id,
+        //             'haid_awal' => $period_start,
+        //             'haid_akhir' => $period_end,
+        //             'ovulasi' => $ovulasi,
+        //             'masa_subur_awal' => $masa_subur_awal,
+        //             'masa_subur_akhir' => $masa_subur_akhir,
+        //             'hari_terakhir_siklus' => $last_day_cycle,
+        //             'lama_siklus' => $period_cycle,
+        //             'durasi_haid' => $period_duration,
+        //             'haid_berikutnya_awal' => $next_period_start,
+        //             'haid_berikutnya_akhir' => $next_period_end,
+        //             'ovulasi_berikutnya' => $next_ovulation,
+        //             'masa_subur_berikutnya_awal' => Carbon::parse($next_ovulation)->subDays(5)->toDateString(),
+        //             'masa_subur_berikutnya_akhir' => Carbon::parse($next_ovulation)->addDays(2)->toDateString(),
+        //             'hari_terakhir_siklus_berikutnya' => $next_cycle_end,
+        //             'is_actual' => "1"
+        //         ]);
+
+        //         if ($i === ($periodsCount - 1)) {
+        //             $latest_period = RiwayatMens::where('user_id', $user_id)
+        //                                 ->where('is_actual', '1')
+        //                                 ->orderBy('haid_awal', 'DESC')
+        //                                 ->first();
+        //             $latest_predictions = RiwayatMens::where('user_id', $user_id)
+        //                                     ->where('haid_awal', '>=', $latest_period->haid_awal)
+        //                                     ->where('is_actual', '0')
+        //                                     ->delete();
+
+        //             $this->generateStorePredictionPeriod($user_id, $latest_period, 3);
+                    
+        //             // $actualPeriod = RiwayatMens::find($period_history->id);
+                
+        //             // // Ambil 3 prediksi berikutnya setelah data aktual, urutkan berdasarkan tanggal awal haid secara ascending
+        //             // $nextPredictions = RiwayatMens::where('user_id', $user_id)
+        //             //     ->where('haid_awal', '>', $actualPeriod->haid_awal)
+        //             //     ->orderBy('haid_awal', 'ASC')
+        //             //     ->take(3)
+        //             //     ->get();
+
+        //             // $nonActualCount = 0;
+
+        //             // $isAllPrediction = false;
+
+        //             // if (count($nextPredictions) < 3) {
+        //             //     foreach ($nextPredictions as $nextPrediction) {
+        //             //         if ($nextPrediction->is_actual == 0) {
+        //             //             $isAllPrediction = true;
+        //             //             $nonActualCount++;
+        //             //             $nextPrediction->delete();
+        //             //         } else {
+        //             //             $isAllPrediction = false;
+        //             //             break;
+        //             //         }
+        //             //     }
+        //             // } else {
+        //             //     foreach ($nextPredictions as $nextPrediction) {
+        //             //         if ($nextPrediction->is_actual == 0) {
+        //             //             $nextPrediction->delete();
+        //             //             $nonActualCount++;
+        //             //         } else {
+        //             //             break;
+        //             //         }
+        //             //     }
+        //             // }
+
+        //             // if ($nextPredictions->count() == 0 || $isAllPrediction == true) {
+        //             //     $actualCount = 3;
+        //             // } else {
+        //             //     $actualCount = $nonActualCount;
+        //             // }
+        //         }
+
+        //         DB::commit();
+
+        //         return response()->json([
+        //             "status" => "success",
+        //             "message" => __('response.saving_success'),
+        //         ], 200);
+        //     } catch (\Throwable $th) {
+        //         DB::rollback();
+        //         return response()->json([
+        //             "status" => "failed",
+        //             "message" => $th->getMessage(),
+        //         ], 400);
+        //     }
+        // }
+
+        try {
+            DB::beginTransaction();
+
+            for ($i = 0; $i < $periodsCount; $i++) {
+                info("Processing period $i");
                 # Inisialisasi variabel-variabel
                 $period_cycle = null;
                 $avg_period_cycle = null;
@@ -282,62 +512,21 @@ class PeriodController extends Controller
                                             ->delete();
 
                     $this->generateStorePredictionPeriod($user_id, $latest_period, 3);
-                    
-                    // $actualPeriod = RiwayatMens::find($period_history->id);
-                
-                    // // Ambil 3 prediksi berikutnya setelah data aktual, urutkan berdasarkan tanggal awal haid secara ascending
-                    // $nextPredictions = RiwayatMens::where('user_id', $user_id)
-                    //     ->where('haid_awal', '>', $actualPeriod->haid_awal)
-                    //     ->orderBy('haid_awal', 'ASC')
-                    //     ->take(3)
-                    //     ->get();
-
-                    // $nonActualCount = 0;
-
-                    // $isAllPrediction = false;
-
-                    // if (count($nextPredictions) < 3) {
-                    //     foreach ($nextPredictions as $nextPrediction) {
-                    //         if ($nextPrediction->is_actual == 0) {
-                    //             $isAllPrediction = true;
-                    //             $nonActualCount++;
-                    //             $nextPrediction->delete();
-                    //         } else {
-                    //             $isAllPrediction = false;
-                    //             break;
-                    //         }
-                    //     }
-                    // } else {
-                    //     foreach ($nextPredictions as $nextPrediction) {
-                    //         if ($nextPrediction->is_actual == 0) {
-                    //             $nextPrediction->delete();
-                    //             $nonActualCount++;
-                    //         } else {
-                    //             break;
-                    //         }
-                    //     }
-                    // }
-
-                    // if ($nextPredictions->count() == 0 || $isAllPrediction == true) {
-                    //     $actualCount = 3;
-                    // } else {
-                    //     $actualCount = $nonActualCount;
-                    // }
                 }
-
-                DB::commit();
-
-                return response()->json([
-                    "status" => "success",
-                    "message" => __('response.saving_success'),
-                ], 200);
-            } catch (\Throwable $th) {
-                DB::rollback();
-                return response()->json([
-                    "status" => "failed",
-                    "message" => $th->getMessage(),
-                ], 400);
             }
+
+            DB::commit();
+
+            return response()->json([
+                "status" => "success",
+                "message" => __('response.saving_success'),
+            ], 200);
+        } catch (\Throwable $th) {
+            DB::rollback();
+            return response()->json([
+                "status" => "failed",
+                "message" => $th->getMessage(),
+            ], 400);
         }
     }
 
@@ -357,10 +546,10 @@ class PeriodController extends Controller
                         $fail('The ' . $attribute . ' must be after the first period.');
                     }
 
-                    $maxAllowedDate = date('Y-m-d', strtotime($firstPeriod . ' + 10 days'));
-                    if (strtotime($value) > strtotime($maxAllowedDate)) {
-                        $fail('The ' . $attribute . ' must be within a maximum range of 10 days from the first period.');
-                    }
+                    // $maxAllowedDate = date('Y-m-d', strtotime($firstPeriod . ' + 10 days'));
+                    // if (strtotime($value) > strtotime($maxAllowedDate)) {
+                    //     $fail('The ' . $attribute . ' must be within a maximum range of 10 days from the first period.');
+                    // }
                 },
             ],
         ]);
@@ -380,7 +569,7 @@ class PeriodController extends Controller
         $period_end = Carbon::parse($request->last_period)->toDateString();
         
         # Period Duration from Input
-        $period_duration = Carbon::parse($period_end)->diffInDays(Carbon::parse($period_start)) + 1;
+        $period_duration = Carbon::parse($period_end)->diffInDays(Carbon::parse($period_start));
 
         try {
             $edited_period = RiwayatMens::where('user_id', $user_id)

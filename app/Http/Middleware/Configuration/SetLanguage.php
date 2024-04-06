@@ -8,12 +8,12 @@ class SetLanguage
 {
     public function handle($request, Closure $next)
     {
-        if (!$request->input('lang')) {
+        if (!$request->header('lang')) {
             \App::setLocale('en');
             return $next($request);
         } else {
-            if ($request->input('lang')=='en' || $request->input('lang')=='id') {
-                \App::setLocale($request->input('lang'));
+            if ($request->header('lang')=='en' || $request->header('lang')=='id') {
+                \App::setLocale($request->header('lang'));
                 
                 return $next($request);
             } else {

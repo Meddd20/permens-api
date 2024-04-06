@@ -388,30 +388,13 @@ class MainController extends Controller
             # Get Period History (All Period History, Actual Period History, Predction Period History)
             $period_history = RiwayatMens::where('user_id', $user_id)->orderBy('haid_awal', 'DESC')->get();
             $actual_period_history = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->orderBy('haid_awal', 'DESC')->get();
-            $prediction_period_history = RiwayatMens::where('user_id', $user_id)->where('is_actual', '0')->orderBy('haid_awal', 'DESC')->get();
-
-            if (count($actual_period_history) > 0) {
-                foreach ($actual_period_history as $data) {
-                    $start_date = Carbon::parse($data->haid_awal)->format('Y-m-d');
-                    $end_date = Carbon::parse($data->haid_akhir)->format('Y-m-d');
-                    $period_cycle = ($data->lama_siklus) ? $data->lama_siklus : Carbon::parse($start_date)->diffInDays(Carbon::now());
-
-                    $period_chart[] = [
-                        "start_date" => $start_date,
-                        "end_date" => $end_date,
-                        "period_cycle" => $period_cycle,
-                        "period_duration" => $data->durasi_haid,
-                    ];
-                }
-            } else {
-                $period_chart[] = NULL;
-            }
+            $prediction_period_history = RiwayatMens::where('user_id', $user_id)->where('is_actual', '0')->orderBy('haid_awal', 'ASC')->get();
 
             # Get Period Data (Shortest Period, Longest Period, Shortest Cycle, Longest Cycle, Average Period Duration, Averatge Period Cycle)
-            $shortest_period = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->orderBy('lama_siklus', 'ASC')->value('lama_siklus');
-            $longest_period = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->orderBy('lama_siklus', 'DESC')->value('lama_siklus');
-            $shortest_cycle = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->orderBy('durasi_haid', 'ASC')->value('lama_siklus');
-            $longest_cycle = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->orderBy('durasi_haid', 'DESC')->value('lama_siklus');
+            $shortest_period = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->orderBy('durasi_haid', 'ASC')->value('durasi_haid');
+            $longest_period = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->orderBy('durasi_haid', 'DESC')->value('durasi_haid');
+            $shortest_cycle = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->whereNotNull('lama_siklus')->orderBy('lama_siklus', 'ASC')->value('lama_siklus');
+            $longest_cycle = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->orderBy('lama_siklus', 'DESC')->value('lama_siklus');
             $avg_period_duration = ceil(RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->orderBy('haid_awal', 'DESC')->avg('durasi_haid'));
             $avg_period_cycle = ceil(RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->orderBy('haid_awal', 'DESC')->avg('lama_siklus'));
 
@@ -422,29 +405,62 @@ class MainController extends Controller
                 $lama_siklus = $haid_awal->diffInDays($today);
                 $latest_period_history['lama_siklus'] = $lama_siklus;
             }
-    
-            # Get Pregnancy Data
-            if ($user->is_pregnant == '0') {
-                $pregnancy_begin = NULL;
-                $pregnant_end = NULL;
-                $usia_kehamilan = NULL;
-                $berat_janin = NULL;
-                $tinggi_badan_janin = NULL;
-            } else {
-                $pregnancy_begin = RiwayatKehamilan::where('user_id', $user_id)->whereNull('kehamilan_akhir')->orderBy('created_at', 'DESC')->first()->hari_pertama_haid_terakhir;
-                $pregnant_end = RiwayatKehamilan::where('user_id', $user_id)->whereNull('kehamilan_akhir')->orderBy('created_at', 'DESC')->first()->tanggal_perkiraan_lahir;
-                $usia_kehamilan = Carbon::now()->diffInWeeks($pregnancy_begin);
 
-                $master_kehamilan = MasterKehamilan::where('minggu_kehamilan', $usia_kehamilan)->first();
-                if ($master_kehamilan != NULL) {
-                    $berat_janin = $master_kehamilan->berat_janin;
-                    $tinggi_badan_janin = $master_kehamilan->tinggi_badan_janin;
-                } else {
-                    $berat_janin = 0;
-                    $tinggi_badan_janin = 0;
+            if (count($actual_period_history) > 0) {
+                foreach ($actual_period_history as $data) {
+                    $start_date = Carbon::parse($data->haid_awal)->format('Y-m-d');
+                    $end_date = Carbon::parse($data->haid_akhir)->format('Y-m-d');
+                    $today = Carbon::now();
+
+                    if (count($actual_period_history) == 1) {
+                        $predicted_end_date = Carbon::parse($start_date)->addDays($data->lama_siklus ?? $avg_period_cycle);
+                        
+                        if ($predicted_end_date->gt($today)) {
+                            $period_cycle = ($data->lama_siklus) ? $data->lama_siklus : Carbon::parse($start_date)->diffInDays(Carbon::now());
+                        } else {
+                            $period_cycle = Carbon::parse($start_date)->diffInDays($today);
+                        }
+                    } else {
+                        $predicted_end_date = Carbon::parse($start_date)->addDays($data->lama_siklus ?? $avg_period_cycle); 
+                        if ($predicted_end_date->lt($today)) {
+                            $period_cycle = ($data->lama_siklus) ? $data->lama_siklus : Carbon::parse($start_date)->diffInDays(Carbon::now());
+                        } else {
+                            $period_cycle = $avg_period_cycle;
+                        }
+                        // $period_cycle = ($data->lama_siklus) ? $data->lama_siklus : Carbon::parse($start_date)->diffInDays(Carbon::now());
+                    }
+                    
+                    if ($start_date == Carbon::now()->format('Y-m-d')) {
+                        $period_cycle = $avg_period_cycle;
+                    }
+
+                    $period_chart[] = [
+                        "id" => $data->id,
+                        "start_date" => $start_date,
+                        "end_date" => $end_date,
+                        "period_cycle" => $period_cycle,
+                        "period_duration" => $data->durasi_haid,
+                    ];
                 }
+                usort($period_chart, function ($a, $b) {
+                    return strtotime($a['start_date']) - strtotime($b['start_date']);
+                });
+            } else {
+                $period_chart[] = NULL;
             }
-    
+
+            $genderData = [];
+
+            # Membuat array berdasarkan bulan
+            for ($month = 1; $month <= 12; $month++) {
+                $genderData[] = [
+                    "bulan" => $month,
+                    "nama_bulan" => $this->getMonthName($month),
+                    "lunar_age" => $lunar_age,
+                    "prediksi_jenis_kelamin" => MasterGender::where('usia', $lunar_age)->where('bulan', $month)->value('gender')
+                ];
+            }
+
             # Return Response
             return response()->json([
                 "status" => "success",
@@ -466,12 +482,7 @@ class MainController extends Controller
                     "period_history" => $period_history,
                     "actual_period" => $actual_period_history,
                     "prediction_period" => $prediction_period_history,
-                    "pregnancy_begin" => $pregnancy_begin,
-                    "pregnancy_end" => $pregnant_end,
-                    "pregnancy_weeks" => $usia_kehamilan,
-                    "bb_rata_rata_janin_gr" => $berat_janin,
-                    "tb_rata_rata_janin_cm" => $tinggi_badan_janin,
-                    "gender" => MasterGender::where('usia', $lunar_age)->where('bulan', Carbon::parse($pregnancy_begin)->format('m'))->first()
+                    "gender" => $genderData
                 ]
             ], 200);
         } catch (\Throwable $th) {
@@ -480,6 +491,26 @@ class MainController extends Controller
                 "message" => "Failed to get data".' | '.$th->getMessage(),
             ], 400);
         }
+    }
+
+    private function getMonthName($month)
+    {
+        $monthNames = [
+            1 => "Januari",
+            2 => "Februari",
+            3 => "Maret",
+            4 => "April",
+            5 => "Mei",
+            6 => "Juni",
+            7 => "Juli",
+            8 => "Agustus",
+            9 => "September",
+            10 => "Oktober",
+            11 => "November",
+            12 => "Desember",
+        ];
+
+        return $monthNames[$month];
     }
 
     public function pregnancyIndex(Request $request) {
@@ -594,9 +625,22 @@ class MainController extends Controller
                 foreach ($actual_period_history as $data) {
                     $start_date = Carbon::parse($data->haid_awal)->format('Y-m-d');
                     $end_date = Carbon::parse($data->haid_akhir)->format('Y-m-d');
-                    $period_cycle = ($data->lama_siklus) ? $data->lama_siklus : Carbon::parse($start_date)->diffInDays(Carbon::now());
+                    
+                    if (count($actual_period_history) == 1) {
+                        $predicted_end_date = Carbon::parse($start_date)->addDays($data->lama_siklus ?? 0);
+                        $today = Carbon::now();
+
+                        if ($predicted_end_date->gte($today)) {
+                            $period_cycle = ($data->lama_siklus) ? $data->lama_siklus : Carbon::parse($start_date)->diffInDays(Carbon::now());
+                        } else {
+                            $period_cycle = Carbon::parse($start_date)->diffInDays($today);
+                        }
+                    } else {
+                        $period_cycle = ($data->lama_siklus) ? $data->lama_siklus : Carbon::parse($start_date)->diffInDays(Carbon::now());
+                    }
 
                     $period_chart[] = [
+                        "id" => $data->id,
                         "start_date" => $start_date,
                         "end_date" => $end_date,
                         "period_cycle" => $period_cycle,
@@ -623,30 +667,17 @@ class MainController extends Controller
                 $lama_siklus = $haid_awal->diffInDays($today);
                 $latest_period_history['lama_siklus'] = $lama_siklus;
             }
-    
-            # Get Pregnancy Data
-            if ($user->is_pregnant == '0') {
-                $pregnancy_begin = NULL;
-                $pregnancy_end = NULL;
-                $usia_kehamilan = NULL;
-                $berat_janin = NULL;
-                $pertambahan_berat_ibu = NULL;
-                $tinggi_badan_janin = NULL;
-            } else {
-                $pregnancy_begin = RiwayatKehamilan::where('user_id', $user_id)->whereNull('kehamilan_akhir')->orderBy('created_at', 'DESC')->first()->hari_pertama_haid_terakhir;
-                $pregnancy_end = RiwayatKehamilan::where('user_id', $user_id)->whereNull('kehamilan_akhir')->orderBy('created_at', 'DESC')->first()->tanggal_perkiraan_lahir;
-                $usia_kehamilan = Carbon::now()->diffInWeeks($pregnancy_begin);
 
-                $master_kehamilan = MasterKehamilan::where('minggu_kehamilan', $usia_kehamilan)->first();
-                if ($master_kehamilan != NULL) {
-                    $berat_janin = $master_kehamilan->berat_janin;
-                    $pertambahan_berat_ibu = $master_kehamilan->pertambahan_berat_ibu;
-                    $tinggi_badan_janin = $master_kehamilan->tinggi_badan_janin;
-                } else {
-                    $berat_janin = 0;
-                    $pertambahan_berat_ibu = 0;
-                    $tinggi_badan_janin = 0;
-                }
+            $genderData = [];
+
+            # Membuat array berdasarkan bulan
+            for ($month = 1; $month <= 12; $month++) {
+                $genderData[] = [
+                    "bulan" => $month,
+                    "nama_bulan" => $this->getMonthName($month),
+                    "lunar_age" => $lunar_age,
+                    "prediksi_jenis_kelamin" => MasterGender::where('usia', $lunar_age)->where('bulan', $month)->value('gender')
+                ];
             }
     
             # Return Response
@@ -670,13 +701,7 @@ class MainController extends Controller
                     "period_history" => $period_history,
                     "actual_period" => $actual_period_history,
                     "prediction_period" => $prediction_period_history,
-                    "pregnancy_begin" => $pregnancy_begin,
-                    "pregnancy_end" => $pregnancy_end,
-                    "pregnancy_weeks" => $usia_kehamilan,
-                    "bb_rata_rata_janin_gr" => $berat_janin,
-                    "pertambahan_bb_rata_rata_ibu_kg" => $pertambahan_berat_ibu,
-                    "tb_rata_rata_janin_cm" => $tinggi_badan_janin,
-                    "gender" => MasterGender::where('usia', $lunar_age)->where('bulan', Carbon::parse($pregnancy_begin)->format('m'))->first()
+                    "gender" => $genderData
                 ]
             ], 200);
         } catch (\Throwable $th) {
@@ -749,7 +774,7 @@ class MainController extends Controller
                 } else {
                     // Handling the last record
                     if ($currentIsActual == 0) {
-                        $lutealEnd = Carbon::parse($period->haid_terakhir_siklus);
+                        $lutealEnd = Carbon::parse($period->hari_terakhir_siklus);
                     }
                 }
 
@@ -967,7 +992,7 @@ class MainController extends Controller
         }
     }
 
-    public function calculateLunarAge($age) {
+    private function calculateLunarAge($age) {
         $chinese_new_year = [
             '1930-01-29', '1931-02-17', '1932-02-06', '1933-01-26', '1934-02-14',
             '1935-02-04', '1936-01-24', '1937-02-11', '1938-01-31', '1939-02-19',

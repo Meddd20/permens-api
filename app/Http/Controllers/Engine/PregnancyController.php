@@ -21,7 +21,14 @@ class PregnancyController extends Controller
             'hari_pertama_haid_terakhir' => 'required|date_format:Y-m-d|before_or_equal:today'
         ]);
 
-        $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
+        if ($request->header('user_id') == null) {
+            $email_regis = $request->input('email_regis');
+            $user = Login::where('email', $email_regis)->first();
+            $user_id = $user->id;
+        } else {
+            $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
+            $user = Login::where('id', $user_id)->first();
+        }
 
         $estimated_due_dates = Carbon::parse(Carbon::parse($request->hari_pertama_haid_terakhir)->subMonth(3))->addYear(1)->addDays(7);
 

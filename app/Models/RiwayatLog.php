@@ -10,18 +10,21 @@ class RiwayatLog extends Model
     use UuidModel;
 
     protected $table = 'tb_data_harian';
+    protected $keyType = 'string';
+    public $incrementing = false;
 
     // Enable timestamps
     public $timestamps = true;
 
     protected $fillable = [
-        'id',
         'user_id',
         'data_harian',
+        'pengingat'
     ];
 
     protected $casts = [
         'data_harian' => 'json',
+        'pengingat' => 'json',
     ];
 
     public function user()

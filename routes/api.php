@@ -38,6 +38,9 @@ Route::post('auth/verifyverification', [AuthController::class, 'verifyVerificati
 
 Route::post('calc/instans', [QuickCalController::class, 'calc']);
 Route::post('period/store-period', [PeriodController::class, 'storePeriod']);
+Route::post('pregnancy/begin', [PregnancyController::class, 'pregnancyBegin']);
+Route::get('articles/show-articles/{id}', [NewsController::class, 'showNews']);
+Route::get('articles/show-all-articles', [NewsController::class, 'showAllNews']);
 
 Route::middleware("validate_user")->group(function() {
     Route::post('period/index', [MainController::class, 'index']);
@@ -49,7 +52,6 @@ Route::middleware("validate_user")->group(function() {
     Route::patch('period/update-period', [PeriodController::class, 'updatePeriod']);
     Route::post('period/store-prediction', [PeriodController::class, 'storePrediction']);
 
-    Route::post('pregnancy/begin', [PregnancyController::class, 'pregnancyBegin']);
     Route::post('pregnancy/end', [PregnancyController::class, 'pregnancyEnd']);
     Route::post('pregnancy/edit', [PregnancyController::class, 'editHPHT']);
     Route::post('pregnancy/delete', [PregnancyController::class, 'deletePregnancy']);
@@ -60,8 +62,11 @@ Route::middleware("validate_user")->group(function() {
     Route::get('daily-log/read-log-by-date', [LogsController::class, 'logsbydate']);
     Route::get('daily-log/read-log-by-tag', [LogsController::class, 'logsByTags']);
 
-    Route::get('articles/show-articles/{id}', [NewsController::class, 'showNews']);
-    Route::get('articles/show-all-articles', [NewsController::class, 'showAllNews']);
+    Route::get('daily-log/get-reminder/{id}', [LogsController::class, 'getReminder']);
+    Route::get('daily-log/get-all-reminder', [LogsController::class, 'getAllReminder']);
+    Route::patch('daily-log/store-reminder', [LogsController::class, 'storeReminder']);
+    Route::patch('daily-log/edit-reminder/{id}', [LogsController::class, 'updateReminder']);
+    Route::delete('daily-log/delete-reminder/{id}', [LogsController::class, 'deleteReminder']);
 
     Route::get('show-profile', [AuthController::class, 'showProfile']);
     Route::patch('update-profile', [AuthController::class, 'updateProfile']);
@@ -71,8 +76,7 @@ Route::middleware("validate_user")->group(function() {
     Route::post('comments/create-comments', [CommentController::class, 'createComment']);
     Route::patch('comments/update-comments/{id}', [CommentController::class, 'updateComment']);
     Route::delete('comments/delete-comments/{id}', [CommentController::class, 'deleteComment']);
-    Route::patch('comments/{id}/like', [CommentController::class, 'upvotes']);
-    Route::patch('comments/{id}/dislike', [CommentController::class, 'downvotes']);
+    Route::post('comments/like-comments', [CommentController::class, 'likeComment']);
     Route::patch('comments/{id}/toggle-pinned', [CommentController::class, 'togglePinned']);
     Route::patch('comments/{id}/toggle-hidden', [CommentController::class, 'toggleHidden']);
 }); 

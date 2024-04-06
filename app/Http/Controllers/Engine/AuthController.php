@@ -504,38 +504,60 @@ class AuthController extends Controller
                 $user = 'User';
             }
         }
-
+        
         $content = "Kode verifikasi email untuk " . $jenis . " " . $user . " adalah " . $kode . ". Berlaku sampai ". Carbon::parse($kadaluarsa)->format('H:i / d-m-Y');
 
-        try {
-            Mail::raw($content, function ($message) use ($request) {
-                $message->to($request->email)
-                        ->subject('Kalender Menstruasi dan Kehamilan by Medhiko - Kode Verifikasi Email')
-                        ->from(env('MAIL_FROM_ADDRESS'), env('MAIL_FROM_NAME'));
-            });
-            if(!empty($account_verif)){
-                $account_verif->percobaan++;
-                $account_verif->kadaluarsa = $kadaluarsa;
-                $account_verif->save();
-                $data = $account_verif;
-            }else{
-                $account_verif_new['percobaan'] = 1;
-                $account_verif_new['kadaluarsa'] = $kadaluarsa;
-                Verifikasi::create($account_verif_new);
-                $data = $account_verif_new;
-            }
-            
-            return response()->json([
-                'status' => 'success',
-                'message' => __('response.verification_email_success'),
-                'data' => $data
-            ], 200);
-        } catch (\Throwable $th) {
-            return response()->json([
-                "status" => "failed",
-                "message" => __('response.verification_email_failed'),
-            ], 400);
+        Mail::raw($content, function ($message) use ($request) {
+                    $message->to($request->email)
+                            ->subject('Kalender Menstruasi dan Kehamilan by Medhiko - Kode Verifikasi Email')
+                            ->from(config('mail.from.address'), config('mail.from.name'));
+        });
+        if(!empty($account_verif)){
+            $account_verif->percobaan++;
+            $account_verif->kadaluarsa = $kadaluarsa;
+            $account_verif->save();
+            $data = $account_verif;
+        }else{
+            $account_verif_new['percobaan'] = 1;
+            $account_verif_new['kadaluarsa'] = $kadaluarsa;
+            Verifikasi::create($account_verif_new);
+            $data = $account_verif_new;
         }
+        
+        return response()->json([
+            'status' => 'success',
+            'message' => __('response.verification_email_success'),
+            'data' => $data
+        ], 200);
+        // try {
+        //     Mail::raw($content, function ($message) use ($request) {
+        //         $message->to($request->email)
+        //                 ->subject('Kalender Menstruasi dan Kehamilan by Medhiko - Kode Verifikasi Email')
+        //                 ->from(env('MAIL_FROM_ADDRESS'), env('MAIL_FROM_NAME'));
+        //     });
+        //     if(!empty($account_verif)){
+        //         $account_verif->percobaan++;
+        //         $account_verif->kadaluarsa = $kadaluarsa;
+        //         $account_verif->save();
+        //         $data = $account_verif;
+        //     }else{
+        //         $account_verif_new['percobaan'] = 1;
+        //         $account_verif_new['kadaluarsa'] = $kadaluarsa;
+        //         Verifikasi::create($account_verif_new);
+        //         $data = $account_verif_new;
+        //     }
+            
+        //     return response()->json([
+        //         'status' => 'success',
+        //         'message' => __('response.verification_email_success'),
+        //         'data' => $data
+        //     ], 200);
+        // } catch (\Throwable $th) {
+        //     return response()->json([
+        //         "status" => "failed",
+        //         "message" => __('response.verification_email_failed'),
+        //     ], 400);
+        // }
     }
 
     public function verifyVerificationCode(Request $request) {

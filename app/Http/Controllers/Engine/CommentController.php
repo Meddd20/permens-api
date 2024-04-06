@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Engine;
 
 use App\Http\Controllers\Controller;
 use App\Models\Komentar;
+use App\Models\KomentarLike;
 use App\Models\Login;
 use App\Models\UToken;
 use Illuminate\Http\Request;
@@ -16,7 +17,7 @@ class CommentController extends Controller
     public function createComment(Request $request) 
     {
         $rules = [
-            'parent_id' => 'sometimes|exists:tb_komentar,id',
+            'parent_id' => 'nullable',
             'article_id' => 'required',
             'content' => 'required|string|max:500',
         ];
@@ -45,7 +46,7 @@ class CommentController extends Controller
             ], 404);
         }
 
-        if ($request->input('parent_id')) {
+        if ($request->input('parent_id') != null) {
             $parentComment = Komentar::find($request->input('parent_id'));
             if ($parentComment) {
                 $parent_comment_user_id = $parentComment->user_id;
@@ -127,6 +128,7 @@ class CommentController extends Controller
     public function deleteComment($id) {
         try {
             $comment = Komentar::find($id);
+            
             if (!$comment) {
                 return response()->json([
                     'status' => 'error',
@@ -135,9 +137,13 @@ class CommentController extends Controller
             }
 
             DB::beginTransaction();
-
             $comment->delete();
-
+            if ($comment->parent_id == null) {
+                $child_comments = Komentar::where("parent_id", $id)->get();
+                foreach ($child_comments as $child_comment) {
+                    $child_comment->delete();
+                }
+            }
             DB::commit();
 
             return response()->json([
@@ -167,39 +173,54 @@ class CommentController extends Controller
         ], 200);
     }
 
-    public function upvotes($id) {
+    public function likeComment(Request $request) {
         try {
-            $comment = Komentar::find($id);
+            $rules = [
+                'user_id' => 'required|exists:tb_1001#,id',
+                'comment_id' => 'required|exists:tb_komentar,id',
+            ];
+            $messages = [];
+            $attributes = [
+                'user_id' => __('attribute.user_id'),
+                'comment_id' => __('attribute.concomment_idtent'),
+            ];
+            $validator = Validator::make($request->all(), $rules, $messages, $attributes);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $validator->errors()
+                ], 400);
+            }
+
+            $comment = Komentar::find($request->input('comment_id'));
+            $userId = $request->input('user_id');
+            $commentId = $request->input('comment_id');
+            $existingLike = KomentarLike::where('user_id', $userId)
+                                    ->where('comment_id', $commentId)
+                                    ->first();
+            
             DB::beginTransaction();
-            $comment->increment('upvotes');
+
+            if ($existingLike) {
+                $existingLike->delete();
+                $comment->decrement('likes');
+            } else {
+                KomentarLike::create([
+                    'user_id' => $userId,
+                    'comment_id' => $commentId
+                ]);
+                $comment->increment('likes');
+            }
+
             $comment->save();
             DB::commit();
 
             return response()->json([
+                'status' => 'success',
                 'message' => __('response.comment_liked_success'),
-                'upvotes' => $comment->upvotes,
-            ], 200);
-
-        } catch (\Throwable $th) {
-            DB::rollback();
-            return response()->json([
-                "status" => "failed",
-                "message" => $th->getMessage()
-            ], 400);
-        }
-    }
-
-    public function downvotes($id) {
-        try {
-            $comment = Komentar::find($id);
-            DB::beginTransaction();
-            $comment->increment('downvotes');
-            $comment->save();
-            DB::commit();
-
-            return response()->json([
-                'message' => __('response.comment_disliked_success'),
-                'downvotes' => $comment->downvotes,
+                'data' => KomentarLike::where('user_id', $userId)
+                            ->where('comment_id', $commentId)
+                            ->exists()
             ], 200);
 
         } catch (\Throwable $th) {
@@ -262,52 +283,4 @@ class CommentController extends Controller
             ], 400);
         }
     }
-
-    // public function toggleFlag($id)
-    // {
-    //     try {
-    //         $comment = Komentar::find($id);
-    //         DB::beginTransaction();
-    //         $comment->is_flagged = $comment->is_flagged === '0' ? '1' : '0';
-    //         $comment->save();
-    //         DB::commit();
-
-    //         $message = $comment->is_flagged 
-    //             ? 'Comment flagged successfully' 
-    //             : 'Comment unflagged successfully';
-
-    //         return response()->json([
-    //             'message' => $message
-    //         ], 200);
-
-    //     } catch (\Throwable $th) {
-    //         DB::rollback();
-    //         return response()->json([
-    //             "status" => "failed",
-    //             "message" => $th->getMessage()
-    //         ], 400);
-    //     }
-    // }
-
-    // public function flagCount($id) {
-    //     try {
-    //         $comment = Komentar::find($id);
-    //         DB::beginTransaction();
-    //         $comment->increment('flag_count');
-    //         $comment->save();
-    //         DB::commit();
-
-    //         return response()->json([
-    //             'message' => 'Comment flagged successfully',
-    //             'flag_count' => $comment->flag_count,
-    //         ], 200);
-
-    //     } catch (\Throwable $th) {
-    //         DB::rollback();
-    //         return response()->json([
-    //             "status" => "failed",
-    //             "message" => $th->getMessage()
-    //         ], 400);
-    //     }
-    // }
 }
