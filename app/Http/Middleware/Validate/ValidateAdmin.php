@@ -2,30 +2,36 @@
 
 namespace App\Http\Middleware\Validate;
 
-use App\Models\UToken;
 use App\Models\Login;
 use Closure;
+use Symfony\Component\HttpFoundation\Response;
 
 class ValidateAdmin
 {
     public function handle($request, Closure $next)
     {
-        $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
-
-        if (!$user_id) {
+        $token = $request->header('user_id');
+        if (!$token) {
             return response()->json([
                 'status' => 'failed',
-                'message' => __('response.user_id')
-            ], 400);
+                'message' => __('response.token_missing')
+            ], Response::HTTP_UNAUTHORIZED);
         }
 
-        $user = Login::find($user_id);
+        $admin = Login::where('token', $request->header('user_id'))->first();
 
-        if (!$user || ($user->role !== 'Admin')) {
+        if (!$admin) {
+            return response()->json([
+                'status' => 'failed',
+                'message' => __('response.invalid_token')
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
+        if ($admin->role != 'Admin') {
             return response()->json([
                 'status' => 'failed',
                 'message' => __('response.invalid_user_role')
-            ], 400);
+            ], Response::HTTP_FORBIDDEN);
         }
 
         return $next($request);

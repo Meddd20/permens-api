@@ -14,7 +14,7 @@ class ValidateToken
                 "message" => __('response.token')
             ], 403);
         } else {
-            if ($request->header('token') != "yghMCYkYmtX6YcHdw8lyL2WpQh1IVCiEBIuqOt3r2XTKZNgnuRzYA1XxteNN") {
+            if ($request->header('token') != env('API_KEY')) {
                 return response()->json([
                     "status" => "failed",
                     "message" => __('response.token_unauth')

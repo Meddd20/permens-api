@@ -8,7 +8,6 @@ return [
 
     "instans_calc" => "Perhitungan berhasil",
 
-    "age_validation" => "Usia tidak mencukupi, Anda harus setidaknya berusia 18 tahun untuk mendaftar.",
     "regis_success" => "Kode verifikasi telah dikirimkan ke alamat email Anda.",
     "account_disactive" => "Akun telah dinonaktifkan",
     "login_success" => "Login berhasil",
@@ -77,4 +76,5 @@ return [
     "last_period_format" => "Akhir siklus menstruasi harus dalam format yang benar.",
     "last_period_after_first" => "Akhir siklus menstruasi harus setelah awal siklus menstruasi.",
 
+    "range_date" => "Masukkan pilihan tanggal antara tahun 1979 dan 2030."
 ];

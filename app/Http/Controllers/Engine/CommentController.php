@@ -6,11 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Komentar;
 use App\Models\KomentarLike;
 use App\Models\Login;
-use App\Models\UToken;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Symfony\Component\HttpFoundation\Response;
 
 class CommentController extends Controller
 {
@@ -32,19 +31,11 @@ class CommentController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => $validator->errors()
-            ], 400);
+            ], Response::HTTP_BAD_REQUEST);
         }
 
-        $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
-        $user = Login::where('id', $user_id)->first();
+        $user = Login::where('token', $request->header('user_id'))->first();
         $parent_comment_user_id = null;
-
-        if (!$user) {
-            return response()->json([
-                'status' => 'error',
-                'message' => __('respone.user_not_found'),
-            ], 404);
-        }
 
         if ($request->input('parent_id') != null) {
             $parentComment = Komentar::find($request->input('parent_id'));
@@ -55,27 +46,28 @@ class CommentController extends Controller
 
         try {
             DB::beginTransaction();
+
             $create_comments = new Komentar();
-            $create_comments->id = Str::uuid();
-            $create_comments->user_id = $user_id;
+            $create_comments->user_id = $user->id;
             $create_comments->parent_id = $request->input('parent_id');
             $create_comments->article_id = $request->input('article_id');
             $create_comments->parent_comment_user_id = $parent_comment_user_id;
             $create_comments->content = $request->input('content');
             $create_comments->save();
+
             DB::commit();
 
             return response()->json([
                 'status' => 'success',
                 'message' => __('response.comment_created_success'),
                 'comment' => $create_comments,
-            ], 200);
+            ], Response::HTTP_OK);
         }catch (\Throwable $th) {
             DB::rollback();
             return response()->json([
                 "status" => "failed",
                 "message" => $th->getMessage()
-            ], 400);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         };
     }
 
@@ -93,7 +85,7 @@ class CommentController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => $validator->errors()
-            ], 400);
+            ], Response::HTTP_BAD_REQUEST);
         }
 
         try {
@@ -102,26 +94,28 @@ class CommentController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => __('response.comment_not_found'),
-                ], 404);
+                ], Response::HTTP_NOT_FOUND);
             }
 
             DB::beginTransaction();
+
             $comment->update([
                 "content" => $request->input('content'),
             ]);
+
             DB::commit();
 
             return response()->json([
                 'status' => 'success',
                 'message' => __('response.comment_updated_success'),
                 'comment' => $comment,
-            ], 200);
+            ], Response::HTTP_OK);
         } catch (\Throwable $th) {
             DB::rollback();
             return response()->json([
                 "status" => "failed",
                 "message" => $th->getMessage()
-            ], 400);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -133,10 +127,11 @@ class CommentController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => __('response.comment_not_found'),
-                ], 404);
+                ], Response::HTTP_NOT_FOUND);
             }
 
             DB::beginTransaction();
+
             $comment->delete();
             if ($comment->parent_id == null) {
                 $child_comments = Komentar::where("parent_id", $id)->get();
@@ -144,18 +139,19 @@ class CommentController extends Controller
                     $child_comment->delete();
                 }
             }
+
             DB::commit();
 
             return response()->json([
                 'status' => 'success',
                 'message' => __('response.comment_deleted_success'),
-            ], 200);
+            ], Response::HTTP_OK);
         } catch (\Throwable $th) {
             DB::rollback();
             return response()->json([
                 "status" => "failed",
                 "message" => $th->getMessage()
-            ], 400);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -170,13 +166,12 @@ class CommentController extends Controller
             'status' => 'success',
             'message' => __('response.get_comments_success'),
             'comments' => $comments,
-        ], 200);
+        ], Response::HTTP_OK);
     }
 
     public function likeComment(Request $request) {
         try {
             $rules = [
-                'user_id' => 'required|exists:tb_1001#,id',
                 'comment_id' => 'required|exists:tb_komentar,id',
             ];
             $messages = [];
@@ -189,11 +184,12 @@ class CommentController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => $validator->errors()
-                ], 400);
+                ], Response::HTTP_BAD_REQUEST);
             }
 
+            $user = Login::where('token', $request->header('user_id'))->first();
+            $userId = $user->id;
             $comment = Komentar::find($request->input('comment_id'));
-            $userId = $request->input('user_id');
             $commentId = $request->input('comment_id');
             $existingLike = KomentarLike::where('user_id', $userId)
                                     ->where('comment_id', $commentId)
@@ -213,6 +209,7 @@ class CommentController extends Controller
             }
 
             $comment->save();
+
             DB::commit();
 
             return response()->json([
@@ -221,66 +218,14 @@ class CommentController extends Controller
                 'data' => KomentarLike::where('user_id', $userId)
                             ->where('comment_id', $commentId)
                             ->exists()
-            ], 200);
+            ], Response::HTTP_OK);
 
         } catch (\Throwable $th) {
             DB::rollback();
             return response()->json([
                 "status" => "failed",
                 "message" => $th->getMessage()
-            ], 400);
-        }
-    }
-
-    public function togglePinned($id)
-    {
-        try {
-            $comment = Komentar::find($id);
-            DB::beginTransaction();
-            $comment->is_pinned = $comment->is_pinned === '0' ? '1' : '0';
-            $comment->save();
-            DB::commit();
-
-            $message = $comment->is_pinned 
-                ? __('response.pinned_comments_success') 
-                : __('response.unpinned_comments_success');
-
-            return response()->json([
-                'message' => $message
-            ], 200);
-
-        } catch (\Throwable $th) {
-            DB::rollback();
-            return response()->json([
-                "status" => "failed",
-                "message" => $th->getMessage()
-            ], 400);
-        }
-    }
-
-    public function toggleHidden($id)
-    {
-        try {
-            $comment = Komentar::find($id);
-            DB::beginTransaction();
-            $comment->is_hidden = $comment->is_hidden === '0' ? '1' : '0';
-            $comment->save();
-            DB::commit();
-
-            $message = $comment->is_hidden 
-                ? __('response.hide_comments_success')
-                : __('response.unhide_comments_success');
-
-            return response()->json([
-                'message' => $message
-            ], 200);
-
-        } catch (\Throwable $th) {
-            DB::rollback();
-            return response()->json([
-                "status" => "failed",
-                "message" => $th->getMessage()
-            ], 400);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 }

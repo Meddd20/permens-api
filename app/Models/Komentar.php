@@ -2,44 +2,28 @@
 
 namespace App\Models;
 
-use App\Traits\UuidModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Komentar extends Model
 {
-    use HasFactory;
-    use UuidModel;
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'tb_komentar';
-    protected $keyType = 'string';
-    public $incrementing = false;
+    protected $guarded = ['id', 'created_at', 'updated_at', 'deleted_at'];
 
-    protected $fillable = [
-        'user_id',
-        'article_id',
-        'parent_id',
-        'parent_comment_user_id',
-        'content',
-        'likes',
-        'is_pinned',
-        'is_hidden',
-        'is_flagged',
-        'flagged_notes',
-        'created_at',
-        'updated_at',
-        'deleted_at'
-    ];
-
-    public function login()
-    {
-        return $this->belongsTo(Login::class, 'user_id', 'id');
+    public function komentarLike(): HasMany {
+        return $this->hasMany(KomentarLike::class, 'comment_id');
     }
 
-    public function article()
-    {
-        return $this->belongsTo(Artikel::class, 'article_id', 'id');
+    public function article(): BelongsTo {
+        return $this->belongsTo(Artikel::class, 'article_id');
+    }
+
+    public function login(): BelongsTo {
+        return $this->belongsTo(Login::class, 'user_id');
     }
 }

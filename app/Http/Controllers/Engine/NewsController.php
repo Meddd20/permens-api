@@ -4,26 +4,26 @@ namespace App\Http\Controllers\Engine;
 
 use App\Models\Artikel;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Controllers\Controller;
 use App\Models\Komentar;
 use App\Models\KomentarLike;
 use App\Models\Login;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\Response;
 
 class NewsController extends Controller
 {
     public function createNews(Request $request) {
         # Input Validations
         $rules = [
-            "user_id" => "required|exists:tb_1001#,id",
             "writter" => "required|string|max:100",
             "title_ind" => "required|string|max:190",
             "title_eng" => "required|string|max:190",
             "slug_title_ind" => "required|string|max:255",
             "slug_title_eng" => "required|string|max:255",
-            "banner" => "required|string|max:190",
+            "banner" => "required|file|mimes:jpeg,jpg,png|max:2048",
             "content_ind" => "required|string",
             "content_eng" => "required|string",
             "video_link" => "required|string|max:255",
@@ -32,7 +32,6 @@ class NewsController extends Controller
         ];
         $messages = [];
         $attributes = [
-            "user_id" => __('attribute.user_id'),
             "writter" => __('attribute.writter'),
             "title_ind" => __('attribute.title_ind'),
             "title_eng" => __('attribute.title_eng'),
@@ -50,22 +49,31 @@ class NewsController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => $validator->errors()
-            ], 400);
+            ], Response::HTTP_BAD_REQUEST);
         }
 
         $tags = $request->input('tags');
+        $user = Login::where('token', $request->header('user_id'))->first();
+        $user_id = $user->id;
 
         try {
             DB::beginTransaction();
             $create_news = new Artikel();
-            $create_news->id = Str::uuid();
-            $create_news->user_id = $request->input('user_id');
+            $create_news->user_id = $user_id;
             $create_news->writter = $request->input('writter');
             $create_news->title_ind = $request->input('title_ind');
             $create_news->title_eng = $request->input('title_eng');
             $create_news->slug_title_ind = $request->input('slug_title_ind');
             $create_news->slug_title_eng = $request->input('slug_title_eng');
-            $create_news->banner = $request->input('banner');
+
+            if ($request->hasFile('banner')) {
+                $file = $request->file('banner');
+                $filePath = 'banners/';
+                $fileName = time() . '.' . $file->getClientOriginalExtension();
+                $file->move(public_path($filePath), $fileName);
+                $create_news->banner = $filePath . $fileName;
+            }
+
             $create_news->content_ind = $request->input('content_ind');
             $create_news->content_eng = $request->input('content_eng');
             $create_news->video_link = $request->input('video_link');
@@ -78,13 +86,13 @@ class NewsController extends Controller
                 'status' => 'success',
                 'message' => __('response.article_created_success'),
                 'article' => $create_news,
-            ], 200);
+            ], Response::HTTP_OK);
         }catch (\Throwable $th) {
             DB::rollback();
             return response()->json([
                 "status" => "failed",
                 "message" => $th->getMessage()
-            ], 400);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         };
 
     }
@@ -97,11 +105,12 @@ class NewsController extends Controller
             "title_eng" => "required|string|max:190",
             "slug_title_ind" => "required|string|max:255",
             "slug_title_eng" => "required|string|max:255",
-            "banner" => "required|string|max:190",
+            "banner" => "required|file|mimes:jpeg,jpg,png|max:2048",
             "content_ind" => "required|string",
             "content_eng" => "required|string",
             "video_link" => "required|string|max:255",
             "source" => "required|string|max:255",
+            "tags" => "required|string",
         ];
         $messages = [];
         $attributes = [
@@ -115,13 +124,14 @@ class NewsController extends Controller
             "content_eng" => __('attribute.content_eng'),
             "video_link" => __('attribute.video_link'),
             "source" => __('attribute.source'),
+            "tags" => __('attribute.tags'),
         ];
         $validator = Validator::make($request->all(), $rules, $messages, $attributes);
         if ($validator->fails()) {
             return response()->json([
                 'status' => 'error',
                 'message' => $validator->errors()
-            ], 400);
+            ], Response::HTTP_BAD_REQUEST);
         }
     
         try {
@@ -130,35 +140,52 @@ class NewsController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => __('response.article_not_found'),
-                ], 404);
+                ], Response::HTTP_NOT_FOUND);
             }
     
             DB::beginTransaction();
-            $article->update([
+
+            $updateData = [
                 "writter" => $request->input('writter'),
                 "title_ind" => $request->input('title_ind'),
                 "title_eng" => $request->input('title_eng'),
                 "slug_title_ind" => $request->input('slug_title_ind'),
                 "slug_title_eng" => $request->input('slug_title_eng'),
-                "banner" => $request->input('banner'),
                 "content_ind" => $request->input('content_ind'),
                 "content_eng" => $request->input('content_eng'),
                 "video_link" => $request->input('video_link'),
                 "source" => $request->input('source'),
-            ]);
+                "tags" => $request->input('tags'),
+            ];
+
+            if ($request->hasFile('banner')) {
+                $file = $request->file('banner');
+                $filePath = 'banners/';
+                $fileName = time() . '.' . $file->getClientOriginalExtension();
+                $file->move(public_path($filePath), $fileName);
+                $updateData['banner'] = $filePath . $fileName;
+
+                // Delete the old banner if it exists
+                if ($article->banner && file_exists(public_path($article->banner))) {
+                    unlink(public_path($article->banner));
+                }
+            }
+
+            $article->update($updateData);
+            
             DB::commit();
     
             return response()->json([
                 'status' => 'success',
                 'message' => __('response.article_updated_success'),
                 'article' => $article,
-            ], 200);
+            ], Response::HTTP_OK);
         } catch (\Throwable $th) {
             DB::rollback();
             return response()->json([
                 "status" => "failed",
                 "message" => $th->getMessage()
-            ], 400);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -169,23 +196,29 @@ class NewsController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => __('response.article_not_found'),
-                ], 404);
+                ], Response::HTTP_NOT_FOUND);
             }
 
             DB::beginTransaction();
+
+            if ($article->banner && Storage::exists($article->banner)) {
+                Storage::delete($article->banner);
+            }
+
             $article->delete();
+
             DB::commit();
     
             return response()->json([
                 'status' => 'success',
                 'message' => __('response.article_deleted_success'),
-            ], 200);
+            ], Response::HTTP_OK);
         } catch (\Throwable $th) {
             DB::rollback();
             return response()->json([
                 "status" => "failed",
                 "message" => $th->getMessage()
-            ], 400);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
     
@@ -194,14 +227,14 @@ class NewsController extends Controller
     {
         try {
             $article = Artikel::find($id);
-            $parent_comments = Komentar::where("article_id", $id)->where("parent_id", null)->get();
+            $parent_comments = Komentar::where("article_id", $id)->where("parent_id", 0)->get();
             $child_comments = Komentar::where("article_id", $id)->whereNotNull("parent_id")->get();
 
             if (!$article) {
                 return response()->json([
                     'status' => 'error',
                     'message' => __('response.article_not_found'),
-                ], 404);
+                ], Response::HTTP_NOT_FOUND);
             }
 
             if (count($parent_comments) > 0) {
@@ -242,6 +275,7 @@ class NewsController extends Controller
                                 'username' => Login::where("id", $childComment['user_id'])->value('nama'),
                                 'parent_id' => $childComment['parent_id'],
                                 'parent_comment_user_id' => $childComment['parent_comment_user_id'],
+                                'parent_comment_user_username' => Login::where("id", $childComment['parent_comment_user_id'])->value('nama'),
                                 'content' => $childComment['content'],
                                 'likes' => $childComment['likes'],
                                 'is_pinned' => $childComment['is_pinned'],
@@ -275,12 +309,12 @@ class NewsController extends Controller
                     "article" =>  $article,
                     "comments" => $commentHierarchy
                 ]
-            ], 200);
+            ], Response::HTTP_OK);
         } catch (\Throwable $th) {
             return response()->json([
                 "status" => "failed",
                 "message" => $th->getMessage()
-            ], 400);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -300,12 +334,12 @@ class NewsController extends Controller
                 'status' => 'success',
                 'message' => __('response.article_retrieved_success'),
                 'data' => $articles,
-            ], 200);
+            ], Response::HTTP_OK);
         } catch (\Throwable $th) {
             return response()->json([
                 'status' => 'failed',
                 'message' => $th->getMessage(),
-            ], 400);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }    
 }

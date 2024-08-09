@@ -3,16 +3,16 @@
 namespace App\Http\Controllers\Engine;
 
 use App\Http\Controllers\Controller;
+use App\Models\Login;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use App\Models\RiwayatLog;
-use App\Models\UToken;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
-
+use Symfony\Component\HttpFoundation\Response;
 
 class LogsController extends Controller
 {
@@ -157,13 +157,14 @@ class LogsController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => $validator->errors()->first()
-            ], 400);
+            ], Response::HTTP_BAD_REQUEST);
         }
 
         try {
             DB::beginTransaction();
         
-            $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
+            $user = Login::where('token', $request->header('user_id'))->first();
+            $user_id = $user->id;
             $dateToCheck = $request->input('date');
         
             $userData = RiwayatLog::where('user_id', $user_id)->first();
@@ -223,20 +224,21 @@ class LogsController extends Controller
                 'status' => 'success',
                 'message' => 'Daily log '.$message.' successfully',
                 'data' => $updatedData
-            ]);
+            ], Response::HTTP_OK);
         } catch (\Throwable $th) {
             DB::rollBack();
             return response()->json([
                 "status" => "failed",
                 "message" => "Failed to store log".' | '.$th->getMessage(),
-            ], 400);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     public function deleteLogByDate(Request $request) 
     {
         try {
-            $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
+            $user = Login::where('token', $request->header('user_id'))->first();
+            $user_id = $user->id;
             $dateToDelete = $request->input('date');
         
             // Cari data pengguna berdasarkan ID pengguna dan tanggal yang akan dihapus
@@ -257,50 +259,51 @@ class LogsController extends Controller
                     return response()->json([
                         'status' => 'success',
                         'message' => __('response.log_deleted_success'),
-                    ], 200);
+                    ], Response::HTTP_OK);
                 } else {
                     return response()->json([
                         'status' => 'error',
                         'message' => __('response.log_not_found'),
-                    ], 404);
+                    ], Response::HTTP_NOT_FOUND);
                 }
             } else {
                 return response()->json([
                     'status' => 'error',
                     'message' => __('response.user_data_not_found'),
-                ], 404);
+                ], Response::HTTP_NOT_FOUND);
             }
         } catch (\Throwable $th) {
             return response()->json([
                 'status' => 'failed',
                 'message' => "Failed to delete log".' | '.$th->getMessage(),
-            ], 400);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     public function allLogs(Request $request) 
     {
         try {
-            $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
+            $user = Login::where('token', $request->header('user_id'))->first();
+            $user_id = $user->id;
             $userData = RiwayatLog::where('user_id', $user_id)->first();
         
             if (!$userData) {
                 return response()->json([
                     'status' => 'error',
                     'message' => __('response.user_data_not_found'),
-                ], 404);
+                ], Response::HTTP_NOT_FOUND);
             }
         
             return response()->json([
                 'status' => 'success',
                 'message' => __('response.log_retrieved_success'),
                 'data' => $userData->data_harian
-            ]);
+            ], Response::HTTP_OK);
         } catch (\Throwable $th) {
             return response()->json([
                 'status' => 'failed',
                 'message' => "Failed to retrieve log ".' | '.$th->getMessage(),
-            ], 400);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -316,14 +319,15 @@ class LogsController extends Controller
         ]);
 
         try {
-            $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
+            $user = Login::where('token', $request->header('user_id'))->first();
+            $user_id = $user->id;
             $userData = RiwayatLog::where('user_id', $user_id)->first();
         
             if (!$userData) {
                 return response()->json([
                     'status' => 'error',
                     'message' => __('response.user_data_not_found'),
-                ], 404);
+                ], Response::HTTP_NOT_FOUND);
             }
         
             $date = $request->input('date');
@@ -356,12 +360,12 @@ class LogsController extends Controller
                 'status' => 'success',
                 'message' => isset($userData->data_harian[$date]) ? __('response.log_retrieved_success') : __('response.log_not_found'),
                 'data' => $responseData
-            ]);
+            ], Response::HTTP_OK);
         } catch (\Throwable $th) {
             return response()->json([
                 'status' => 'failed',
                 'message' => 'Failed to retrieve log by date.' . $th->getMessage(),
-            ], 500);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -382,17 +386,18 @@ class LogsController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => $validator->errors()->first(),
-                ], 400);
+                ], Response::HTTP_BAD_REQUEST);
             }
 
-            $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
+            $user = Login::where('token', $request->header('user_id'))->first();
+            $user_id = $user->id;
             $userData = RiwayatLog::where('user_id', $user_id)->first();
 
             if (!$userData) {
                 return response()->json([
                     'status' => 'error',
                     'message' => __('response.user_data_not_found'),
-                ], 404);
+                ], Response::HTTP_NOT_FOUND);
             }
 
             $tagsValues = [];
@@ -452,12 +457,12 @@ class LogsController extends Controller
                     "percentage_6months" => $percentageOccurrences6Months,
                     "percentage_1year" => $percentageOccurrences1Year,
                 ],
-            ]);
+            ], Response::HTTP_OK);
         } catch (\Throwable $th) {
             return response()->json([
                 'status' => 'failed',
                 'message' => 'Failed to retrieve log by tags.' . $th->getMessage(),
-            ], 500);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -496,10 +501,9 @@ class LogsController extends Controller
         return $occurrences;
     }
     
-
-
     public function storeReminder(Request $request) {
         $rules = [
+            "id" => "nullable|string",
             "title" => "required|string",
             "description" => "nullable|string",
             "datetime" => "required|date_format:Y-m-d H:i|after_or_equal:" . now(),
@@ -514,18 +518,21 @@ class LogsController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => $validator->errors()->first()
-            ], 400);
+            ], Response::HTTP_BAD_REQUEST);
         }
 
         try {
             DB::beginTransaction();
         
-            $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
+            $user = Login::where('token', $request->header('user_id'))->first();
+            $user_id = $user->id;
             $userData = RiwayatLog::where('user_id', $user_id)->first();
+
+            $preMadeReminderId = $request->id;
         
             // Generate unique IDs for each reminder
-            $newReminders[] = [
-                "id" => Str::uuid(),
+            $newReminders = [
+                "id" => $preMadeReminderId == null ? Str::uuid() : $preMadeReminderId,
                 "title" => $request->title,
                 "description" => $request->description,
                 "datetime" => $request->datetime
@@ -534,13 +541,13 @@ class LogsController extends Controller
             if ($userData) {
                 // User data exists, update the existing data with new reminders
                 $userDataReminders = $userData->pengingat ?? [];
-                $userData->pengingat = array_merge($userDataReminders, $newReminders);
+                $userData->pengingat = array_merge($userDataReminders, [$newReminders]);
                 $userData->save();
             } else {
                 // User data doesn't exist, create a new record with the new reminders
                 $userData = new RiwayatLog();
                 $userData->user_id = $user_id;
-                $userData->pengingat = $newReminders;
+                $userData->pengingat = [$newReminders];
                 $userData->save();
             }
         
@@ -549,13 +556,14 @@ class LogsController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => 'Reminder store successfully',
-            ]);
+                'data' => $newReminders,
+            ], Response::HTTP_OK);
         } catch (\Throwable $th) {
             DB::rollBack();
             return response()->json([
                 "status" => "failed",
                 "message" => "Failed to store reminder".' | '.$th->getMessage(),
-            ], 400);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -576,20 +584,21 @@ class LogsController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => $validator->errors()->first()
-            ], 400);
+            ], Response::HTTP_BAD_REQUEST);
         }
     
         try {
             DB::beginTransaction();
         
-            $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
+            $user = Login::where('token', $request->header('user_id'))->first();
+            $user_id = $user->id;
             $userData = RiwayatLog::where('user_id', $user_id)->first();
             
             if (!$userData) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'User data not found',
-                ], 404);
+                ], Response::HTTP_NOT_FOUND);
             }
     
             // Cari pengingat berdasarkan ID
@@ -599,7 +608,7 @@ class LogsController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Reminder not found',
-                ], 404);
+                ], Response::HTTP_NOT_FOUND);
             }
     
             // Update data pengingat
@@ -623,13 +632,13 @@ class LogsController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => 'Reminder updated successfully',
-            ]);
+            ], Response::HTTP_OK);
         } catch (\Throwable $th) {
             DB::rollBack();
             return response()->json([
                 "status" => "failed",
                 "message" => "Failed to update reminder".' | '.$th->getMessage(),
-            ], 400);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -637,7 +646,8 @@ class LogsController extends Controller
         try {
             DB::beginTransaction();
     
-            $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
+            $user = Login::where('token', $request->header('user_id'))->first();
+            $user_id = $user->id;
             $userData = RiwayatLog::where('user_id', $user_id)->first();
     
             if ($userData) {
@@ -659,14 +669,14 @@ class LogsController extends Controller
                     return response()->json([
                         'status' => 'success',
                         'message' => 'Reminder deleted successfully',
-                    ]);
+                    ], Response::HTTP_OK);
                 } else {
                     // Jika ID tidak ditemukan
                     DB::rollBack();
                     return response()->json([
                         'status' => 'error',
                         'message' => 'Reminder not found with the provided ID'
-                    ], 404);
+                    ], Response::HTTP_NOT_FOUND);
                 }
             } else {
                 // Jika data pengguna tidak ditemukan
@@ -674,58 +684,14 @@ class LogsController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'User data not found'
-                ], 404);
+                ], Response::HTTP_NOT_FOUND);
             }
         } catch (\Throwable $th) {
             DB::rollBack();
             return response()->json([
                 "status" => "failed",
                 "message" => "Failed to delete reminder".' | '.$th->getMessage(),
-            ], 400);
-        }
-    }
-
-    public function getReminder(Request $request, $id) {
-        try {
-            $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
-            $userData = RiwayatLog::where('user_id', $user_id)->first();
-    
-            if ($userData) {
-                $userDataReminders = $userData->pengingat ?? [];
-    
-                // Cari pengingat berdasarkan ID
-                $reminder = array_values(array_filter($userDataReminders, function ($reminder) use ($id) {
-                    return $reminder['id'] === $id;
-                }));
-    
-                if ($reminder !== false) {
-                    return response()->json([
-                        'status' => 'success',
-                        'message' => 'Reminder fetched successfully',
-                        'data' => $reminder[0],
-                    ]);
-                } else {
-                    // Jika ID tidak ditemukan
-                    DB::rollBack();
-                    return response()->json([
-                        'status' => 'error',
-                        'message' => 'Reminder not found with the provided ID'
-                    ], 404);
-                }
-            } else {
-                // Jika data pengguna tidak ditemukan
-                DB::rollBack();
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'User data not found'
-                ], 404);
-            }
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            return response()->json([
-                "status" => "failed",
-                "message" => "Failed to fetch reminder".' | '.$th->getMessage(),
-            ], 400);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -733,7 +699,8 @@ class LogsController extends Controller
         try {
             DB::beginTransaction();
     
-            $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
+            $user = Login::where('token', $request->header('user_id'))->first();
+            $user_id = $user->id;
             $userData = RiwayatLog::where('user_id', $user_id)->first();
     
             if ($userData) {
@@ -763,22 +730,20 @@ class LogsController extends Controller
                     'status' => 'success',
                     'message' => 'Reminder fetched successfully',
                     'data' => $futureReminders,
-                ]);
+                ], Response::HTTP_OK);
             } else {
                 DB::rollBack();
                 return response()->json([
                     'status' => 'error',
                     'message' => 'User data not found'
-                ], 404);
+                ], Response::HTTP_NOT_FOUND);
             }
         } catch (\Throwable $th) {
             DB::rollBack();
             return response()->json([
                 "status" => "failed",
                 "message" => "Failed to fetch reminder".' | '.$th->getMessage(),
-            ], 400);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
-    
-    
 }

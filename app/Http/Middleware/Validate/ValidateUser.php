@@ -3,29 +3,35 @@
 namespace App\Http\Middleware\Validate;
 
 use Closure;
-use App\Models\UToken;
 use App\Models\Login;
+use Symfony\Component\HttpFoundation\Response;
 
 class ValidateUser
 {
     public function handle($request, Closure $next)
     {
-        $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
-
-        if (!$user_id) {
+        $token = $request->header('user_id');
+        if (!$token) {
             return response()->json([
                 'status' => 'failed',
-                'message' => __('response.user_id')
-            ], 400);
+                'message' => __('response.token_missing')
+            ], Response::HTTP_UNAUTHORIZED);
         }
 
-        $user = Login::find($user_id);
+        $user = Login::where('token', $request->header('user_id'))->first();
 
-        if (!$user || ($user->role !== 'User')) {
+        if (!$user) {
+            return response()->json([
+                'status' => 'failed',
+                'message' => __('response.invalid_token')
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
+        if ($user->role != 'User') {
             return response()->json([
                 'status' => 'failed',
                 'message' => __('response.invalid_user_role')
-            ], 400);
+            ], Response::HTTP_FORBIDDEN);
         }
 
         return $next($request);

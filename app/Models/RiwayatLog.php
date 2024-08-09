@@ -2,33 +2,23 @@
 
 namespace App\Models;
 
-use App\Traits\UuidModel;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RiwayatLog extends Model
 {
-    use UuidModel;
+    use HasFactory;
 
     protected $table = 'tb_data_harian';
-    protected $keyType = 'string';
-    public $incrementing = false;
-
-    // Enable timestamps
-    public $timestamps = true;
-
-    protected $fillable = [
-        'user_id',
-        'data_harian',
-        'pengingat'
-    ];
+    protected $guarded = ['id', 'created_at', 'updated_at'];
 
     protected $casts = [
         'data_harian' => 'json',
         'pengingat' => 'json',
     ];
 
-    public function user()
-    {
-        return $this->belongsTo(Login::class, 'user_id', 'id');
+    public function login(): BelongsTo {
+        return $this->belongsTo(Login::class, 'user_id');
     }
 }

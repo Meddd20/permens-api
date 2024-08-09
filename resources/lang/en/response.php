@@ -8,7 +8,6 @@ return [
 
     "instans_calc" => "Calculation successful",
 
-    "age_validation" => "Age not sufficient, you must be at least 18 years old to register.",
     "regis_success" => "A verification code has been emailed to your email address.",
     "account_disactive" => "Account has been disactived",
     "login_success" => "Login successful",
@@ -77,4 +76,5 @@ return [
     "last_period_format" => "The last period must be in the correct format.",
     "last_period_after_first" => "The last period must be after the first period.",
 
+    "range_date" => "Please pick a date between 1979 and 2030."
 ];

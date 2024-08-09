@@ -10,8 +10,11 @@ use Illuminate\Http\Request;
 use App\Models\MasterKehamilan;
 use App\Models\RiwayatKehamilan;
 use App\Http\Controllers\Controller;
-use App\Models\UToken;
+use App\Models\BeratIdealIbuHamil;
+use App\Models\MasterNewMoon;
+use App\Models\RiwayatLog;
 use Illuminate\Support\Facades\Validator;
+use Symfony\Component\HttpFoundation\Response;
 
 class MainController extends Controller
 {
@@ -380,8 +383,8 @@ class MainController extends Controller
         try {
             # Get User Data (Current Year, User ID, User Age, User Lunar Age)
             $current_year = Carbon::now()->format('Y');
-            $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
-            $user = Login::where('id', $user_id)->first();
+            $user = Login::where('token', $request->header('user_id'))->first();
+            $user_id = $user->id;
             $age = Carbon::parse($user->tanggal_lahir)->age;
             $lunar_age = $this->calculateLunarAge($age);
     
@@ -449,17 +452,18 @@ class MainController extends Controller
                 $period_chart[] = NULL;
             }
 
-            $genderData = [];
+            $shettlesGenderPrediction = collect();
 
-            # Membuat array berdasarkan bulan
-            for ($month = 1; $month <= 12; $month++) {
-                $genderData[] = [
-                    "bulan" => $month,
-                    "nama_bulan" => $this->getMonthName($month),
-                    "lunar_age" => $lunar_age,
-                    "prediksi_jenis_kelamin" => MasterGender::where('usia', $lunar_age)->where('bulan', $month)->value('gender')
-                ];
+            foreach ($period_history as $period) {
+                $shettlesGenderPrediction->push([
+                    "boyStartDate" => Carbon::parse($period->ovulasi)->toDateString(),
+                    "boyEndDate" => Carbon::parse($period->ovulasi)->addDays(3)->toDateString(),
+                    "girlStartDate" => Carbon::parse($period->haid_akhir)->addDays(1)->toDateString(),
+                    "girlEndDate" => Carbon::parse($period->ovulasi)->subDays(2)->toDateString()
+                ]);
             }
+
+            $shettlesGenderPrediction = $shettlesGenderPrediction->sortBy('boyStartDate')->values()->all();
 
             # Return Response
             return response()->json([
@@ -482,48 +486,22 @@ class MainController extends Controller
                     "period_history" => $period_history,
                     "actual_period" => $actual_period_history,
                     "prediction_period" => $prediction_period_history,
-                    "gender" => $genderData
+                    "shettlesGenderPrediction" => $shettlesGenderPrediction
                 ]
-            ], 200);
+            ], Response::HTTP_OK);
         } catch (\Throwable $th) {
             return response()->json([
                 "status" => "failed",
                 "message" => "Failed to get data".' | '.$th->getMessage(),
-            ], 400);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-    }
-
-    private function getMonthName($month)
-    {
-        $monthNames = [
-            1 => "Januari",
-            2 => "Februari",
-            3 => "Maret",
-            4 => "April",
-            5 => "Mei",
-            6 => "Juni",
-            7 => "Juli",
-            8 => "Agustus",
-            9 => "September",
-            10 => "Oktober",
-            11 => "November",
-            12 => "Desember",
-        ];
-
-        return $monthNames[$month];
     }
 
     public function pregnancyIndex(Request $request) {
         try {
-            $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
-            $user = Login::where('id', $user_id)->first();
-
-            if (!$user) {
-                return response()->json([
-                    "status" => "failed",
-                    "message" => __('response.user_not_found'),
-                ], 404);
-            }
+            $user = Login::where('token', $request->header('user_id'))->first();
+            $user_id = $user->id;
+            $lang = $request->header('lang');
 
             $pregnancy_history = RiwayatKehamilan::where('user_id', $user_id)->get();
             $currently_pregnant = RiwayatKehamilan::where('user_id', $user_id)->where('status', 'Hamil')->get();
@@ -533,7 +511,7 @@ class MainController extends Controller
                 return response()->json([
                     "status" => "failed",
                     "message" => __('response.pregnant_not_found'),
-                ], 404);
+                ], Response::HTTP_NOT_FOUND);
             }
 
             $pregnant_info[] = [];
@@ -542,32 +520,58 @@ class MainController extends Controller
                 $week_data = [];
             
                 $hari_pertama_haid_terakhir = $pregnancy->hari_pertama_haid_terakhir;
+                $usia_kehamilan_sekarang = Carbon::now()->diffInWeeks($hari_pertama_haid_terakhir) + 1;
 
-                for ($minggu = 1; $minggu <= 42; $minggu++) {
+                for ($minggu = 1; $minggu <= 40; $minggu++) {
                     $data_kehamilan_mingguan = MasterKehamilan::where('minggu_kehamilan', $minggu)->first();
-                
-                    if ($data_kehamilan_mingguan) {
-                        $tanggal_awal_minggu = Carbon::parse($hari_pertama_haid_terakhir)->addDays(($minggu - 1) * 7)->format('Y-m-d');
-                        $tanggal_akhir_minggu = Carbon::parse($hari_pertama_haid_terakhir)->addDays($minggu * 7 - 1)->format('Y-m-d');
-                
+                    $minggu_sisa = 40 - $minggu;
+
+                    $tanggal_awal_minggu = Carbon::parse($hari_pertama_haid_terakhir)->addDays(($minggu - 1) * 7)->format('Y-m-d');
+                    $tanggal_akhir_minggu = Carbon::parse($hari_pertama_haid_terakhir)->addDays($minggu * 7 - 1)->format('Y-m-d');
+
+                    if ($minggu <= 12) {
+                        $trimester = 1;
+                    } elseif ($minggu <= 27) {
+                        $trimester = 2;
+                    } else {
+                        $trimester = 3;
+                    }
+
+                    if ($lang == "id") {
                         $week_data[] = [
                             "minggu_kehamilan" => $minggu,
+                            "trimester" => $trimester,
+                            "minggu_sisa" => $minggu_sisa,
+                            "minggu_label" => ($minggu < $usia_kehamilan_sekarang) ? ($usia_kehamilan_sekarang - $minggu) . " minggu lalu" : (($minggu > $usia_kehamilan_sekarang) ? ($minggu - $usia_kehamilan_sekarang) . " minggu ke depan" : "Minggu ini"),
                             "tanggal_awal_minggu" => $tanggal_awal_minggu,
                             "tanggal_akhir_minggu" => $tanggal_akhir_minggu,
                             "berat_janin" => $data_kehamilan_mingguan->berat_janin,
                             "tinggi_badan_janin" => $data_kehamilan_mingguan->tinggi_badan_janin,
-                            "poin_utama_id" => $data_kehamilan_mingguan->poin_utama_id,
-                            "poin_utama_en" => $data_kehamilan_mingguan->poin_utama_en,
-                            "ukuran_bayi_id" => $data_kehamilan_mingguan->ukuran_bayi_id,
-                            "ukuran_bayi_en" => $data_kehamilan_mingguan->ukuran_bayi_en,
-                            "perkembangan_bayi_id" => $data_kehamilan_mingguan->perkembangan_bayi_id,
-                            "perkembangan_bayi_en" => $data_kehamilan_mingguan->perkembangan_bayi_en,
-                            "perubahan_tubuh_id" => $data_kehamilan_mingguan->perubahan_tubuh_id,
-                            "perubahan_tubuh_en" => $data_kehamilan_mingguan->perubahan_tubuh_en,
-                            "gejala_umum_id" => $data_kehamilan_mingguan->gejala_umum_id,
-                            "gejala_umum_en" => $data_kehamilan_mingguan->gejala_umum_en,
-                            "tips_mingguan_id" => $data_kehamilan_mingguan->tips_mingguan_id,
-                            "tips_mingguan_en" => $data_kehamilan_mingguan->tips_mingguan_en,
+                            "poin_utama" => $data_kehamilan_mingguan->poin_utama_id,
+                            "ukuran_bayi" => $data_kehamilan_mingguan->ukuran_bayi_id,
+                            "perkembangan_bayi" => $data_kehamilan_mingguan->perkembangan_bayi_id,
+                            "perubahan_tubuh" => $data_kehamilan_mingguan->perubahan_tubuh_id,
+                            "gejala_umum" => $data_kehamilan_mingguan->gejala_umum_id,
+                            "tips_mingguan" => $data_kehamilan_mingguan->tips_mingguan_id,
+                            "bayi_img_path" => $data_kehamilan_mingguan->bayi_img_path,
+                            "ukuran_bayi_img_path" => $data_kehamilan_mingguan->ukuran_bayi_img_path,
+                        ];
+                    } else {
+                        $week_data[] = [
+                            "minggu_kehamilan" => $minggu,
+                            "trimester" => $trimester,
+                            "minggu_sisa" => $minggu_sisa,
+                            "minggu_label" => ($minggu < $usia_kehamilan_sekarang) ? ($usia_kehamilan_sekarang - $minggu) . " weeks ago" : (($minggu > $usia_kehamilan_sekarang) ? ($minggu - $usia_kehamilan_sekarang) . " weeks ahead" : "Current week"),
+                            "tanggal_awal_minggu" => $tanggal_awal_minggu,
+                            "tanggal_akhir_minggu" => $tanggal_akhir_minggu,
+                            "berat_janin" => $data_kehamilan_mingguan->berat_janin,
+                            "tinggi_badan_janin" => $data_kehamilan_mingguan->tinggi_badan_janin,
+                            "poin_utama" => $data_kehamilan_mingguan->poin_utama_en,
+                            "ukuran_bayi" => $data_kehamilan_mingguan->ukuran_bayi_en,
+                            "perkembangan_bayi" => $data_kehamilan_mingguan->perkembangan_bayi_en,
+                            "perubahan_tubuh" => $data_kehamilan_mingguan->perubahan_tubuh_en,
+                            "gejala_umum" => $data_kehamilan_mingguan->gejala_umum_en,
+                            "tips_mingguan" => $data_kehamilan_mingguan->tips_mingguan_en,
                             "bayi_img_path" => $data_kehamilan_mingguan->bayi_img_path,
                             "ukuran_bayi_img_path" => $data_kehamilan_mingguan->ukuran_bayi_img_path,
                         ];
@@ -579,7 +583,7 @@ class MainController extends Controller
                     "status" => $pregnancy->status,
                     "hari_pertama_haid_terakhir" => $hari_pertama_haid_terakhir,
                     "tanggal_perkiraan_lahir" => $pregnancy->tanggal_perkiraan_lahir,
-                    "usia_kehamilan" => Carbon::now()->diffInWeeks($hari_pertama_haid_terakhir),
+                    "usia_kehamilan" => $usia_kehamilan_sekarang,
                     "weekly_data" => $week_data,
                 ];
             }
@@ -592,12 +596,12 @@ class MainController extends Controller
                     "pregnancy_history" => $pregnancy_history,
                     "currently_pregnant" => $pregnancy_info,
                 ]
-            ], 200);
+            ], Response::HTTP_OK);
         } catch (\Throwable $th) {
             return response()->json([
                 "status" => "failed",
                 "message" => "Failed to get data".' | '.$th->getMessage(),
-            ], 400);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -611,8 +615,8 @@ class MainController extends Controller
         try {
             # Get User Data (Current Year, User ID, User Age, User Lunar Age)
             $current_year = $request->year;
-            $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
-            $user = Login::where('id', $user_id)->first();
+            $user = Login::where('token', $request->header('user_id'))->first();
+            $user_id = $user->id;
             $age = Carbon::parse($user->tanggal_lahir)->age;
             $lunar_age = $this->calculateLunarAge($age);
     
@@ -667,18 +671,6 @@ class MainController extends Controller
                 $lama_siklus = $haid_awal->diffInDays($today);
                 $latest_period_history['lama_siklus'] = $lama_siklus;
             }
-
-            $genderData = [];
-
-            # Membuat array berdasarkan bulan
-            for ($month = 1; $month <= 12; $month++) {
-                $genderData[] = [
-                    "bulan" => $month,
-                    "nama_bulan" => $this->getMonthName($month),
-                    "lunar_age" => $lunar_age,
-                    "prediksi_jenis_kelamin" => MasterGender::where('usia', $lunar_age)->where('bulan', $month)->value('gender')
-                ];
-            }
     
             # Return Response
             return response()->json([
@@ -701,14 +693,13 @@ class MainController extends Controller
                     "period_history" => $period_history,
                     "actual_period" => $actual_period_history,
                     "prediction_period" => $prediction_period_history,
-                    "gender" => $genderData
                 ]
-            ], 200);
+            ], Response::HTTP_OK);
         } catch (\Throwable $th) {
             return response()->json([
                 "status" => "failed",
                 "message" => "Failed to get data".' | '.$th->getMessage(),
-            ], 400);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -725,12 +716,13 @@ class MainController extends Controller
         
         if ($validator->fails()) {
             return response()->json([
-                'status' => 'error',
-                'message' => $validator->errors()
-            ], 400);
+                "status" => "failed",
+                "message" => __('response.'),
+            ], Response::HTTP_NOT_FOUND);
         }
 
-        $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
+        $user = Login::where('token', $request->header('user_id'))->first();
+        $user_id = $user->id;
         $periodHistory = RiwayatMens::where('user_id', $user_id)
             ->orderBy('haid_awal', 'asc')
             ->get();
@@ -738,6 +730,13 @@ class MainController extends Controller
 
         // Determine events on the specified date
         $specifiedDate = Carbon::parse($request->input('date_selected'));
+
+        if ($specifiedDate->greaterThan('2030-12-31') || $specifiedDate->lessThan('1979-01-01')) {
+            return response()->json([
+                "status" => "failed",
+                "message" => __('response.range_date'),
+            ], Response::HTTP_BAD_REQUEST);
+        }
 
         $nextMenstruationStart = null;
         $nextMenstruationEnd = null;
@@ -753,6 +752,7 @@ class MainController extends Controller
         $lutealEnd = null;
         $dayOfCycle = null;
         $currentIsActual = null;
+        $shettlesGenderPrediction = null;
 
         try {
             foreach ($periodHistory as $key => $period) {
@@ -789,7 +789,6 @@ class MainController extends Controller
                 
                 if ($currentIsActual == '1') {
                     $firstDayOfMenstruation = Carbon::parse($period->haid_awal);
-                    $dayOfCycle = Carbon::parse($firstDayOfMenstruation)->diffInDays($specifiedDate) + 1;
                 } else {
                     $last_actual_period = RiwayatMens::where('user_id', $user_id)
                                 ->where('is_actual', '1')
@@ -798,7 +797,16 @@ class MainController extends Controller
                                 ->orderBy('haid_awal', 'DESC')
                                 ->first();
                     $firstDayOfMenstruation = Carbon::parse($last_actual_period->haid_awal);
-                    $dayOfCycle = Carbon::parse($firstDayOfMenstruation)->diffInDays($specifiedDate) + 1;
+                }
+                $dayOfCycle = Carbon::parse($firstDayOfMenstruation)->diffInDays($specifiedDate) + 1;
+
+                if ($specifiedDate->between($periodStart, $lutealEnd)) {
+                    $shettlesGenderPrediction = [
+                        "boyStartDate" => Carbon::parse($ovulation)->toDateString(),
+                        "boyEndDate" => Carbon::parse($ovulation)->addDays(3)->toDateString(),
+                        "girlStartDate" => Carbon::parse($periodEnd)->addDays(1)->toDateString(),
+                        "girlEndDate" => Carbon::parse($ovulation)->subDays(2)->toDateString()
+                    ];
                 }
 
                 if ($specifiedDate->between($periodStart, $periodEnd)) {
@@ -830,40 +838,6 @@ class MainController extends Controller
 
                     $nextLutealStart = Carbon::parse($period->masa_subur_akhir)->addDays(1);
                     $nextLutealEnd = Carbon::parse($nextRecord->haid_awal)->subDays(1);
-                    $daysUntilNextLuteal = $nextLutealStart->diffInDays($specifiedDate);
-                    break;
-                }
-
-                if ($specifiedDate->between($follicularStart, $follicularEnd)) {
-                    $event = 'Follicular Phase';
-                    $pregnancy_chances = "Low";
-                    $currentIsActual = $period->is_actual;
-                    $eventId = $period->id;
-                    
-                    // Check if it's the last record
-                    if ($key == $recordsCount - 1) {
-                        $nextMenstruationStart = Carbon::parse($period->haid_berikutnya_awal);
-                        $nextMenstruationEnd = Carbon::parse($period->haid_berikutnya_akhir);
-                        $nextFollicularStart = Carbon::parse($period->haid_berikutnya_akhir)->addDays(1);
-                        $nextFollicularEnd = Carbon::parse($period->masa_subur_berikutnya_awal)->subDays(1);
-                    } else {
-                        $nextMenstruationStart = Carbon::parse($nextRecord->haid_awal);
-                        $nextMenstruationEnd = Carbon::parse($nextRecord->haid_akhir);
-                        $nextFollicularStart = Carbon::parse($nextRecord->haid_akhir)->addDays(1);
-                        $nextFollicularEnd = Carbon::parse($nextRecord->masa_subur_awal)->subDays(1);
-                    }
-                    $daysUntilNextMenstruation = $nextMenstruationStart->diffInDays($specifiedDate);
-                    $daysUntilNextFollicular = $nextFollicularStart->diffInDays($specifiedDate);
-
-                    $nextOvulation = Carbon::parse($period->ovulasi);
-                    $daysUntilNextOvulation = $nextOvulation->diffInDays($specifiedDate);
-
-                    $nextFertileStart = Carbon::parse($period->masa_subur_awal);
-                    $nextFertileEnd = Carbon::parse($period->masa_subur_akhir);
-                    $daysUntilNextFertile = $nextFertileStart->diffInDays($specifiedDate);
-
-                    $nextLutealStart = Carbon::parse($period->masa_subur_akhir);
-                    $nextLutealEnd = Carbon::parse($nextRecord->haid_awal);
                     $daysUntilNextLuteal = $nextLutealStart->diffInDays($specifiedDate);
                     break;
                 }
@@ -919,6 +893,40 @@ class MainController extends Controller
                     break;
                 }
 
+                if ($specifiedDate->between($follicularStart, $follicularEnd)) {
+                    $event = 'Follicular Phase';
+                    $pregnancy_chances = "Low";
+                    $currentIsActual = $period->is_actual;
+                    $eventId = $period->id;
+                    
+                    // Check if it's the last record
+                    if ($key == $recordsCount - 1) {
+                        $nextMenstruationStart = Carbon::parse($period->haid_berikutnya_awal);
+                        $nextMenstruationEnd = Carbon::parse($period->haid_berikutnya_akhir);
+                        $nextFollicularStart = Carbon::parse($period->haid_berikutnya_akhir)->addDays(1);
+                        $nextFollicularEnd = Carbon::parse($period->masa_subur_berikutnya_awal)->subDays(1);
+                    } else {
+                        $nextMenstruationStart = Carbon::parse($nextRecord->haid_awal);
+                        $nextMenstruationEnd = Carbon::parse($nextRecord->haid_akhir);
+                        $nextFollicularStart = Carbon::parse($nextRecord->haid_akhir)->addDays(1);
+                        $nextFollicularEnd = Carbon::parse($nextRecord->masa_subur_awal)->subDays(1);
+                    }
+                    $daysUntilNextMenstruation = $nextMenstruationStart->diffInDays($specifiedDate);
+                    $daysUntilNextFollicular = $nextFollicularStart->diffInDays($specifiedDate);
+
+                    $nextOvulation = Carbon::parse($period->ovulasi);
+                    $daysUntilNextOvulation = $nextOvulation->diffInDays($specifiedDate);
+
+                    $nextFertileStart = Carbon::parse($period->masa_subur_awal);
+                    $nextFertileEnd = Carbon::parse($period->masa_subur_akhir);
+                    $daysUntilNextFertile = $nextFertileStart->diffInDays($specifiedDate);
+
+                    $nextLutealStart = Carbon::parse($period->masa_subur_akhir);
+                    $nextLutealEnd = Carbon::parse($nextRecord->haid_awal);
+                    $daysUntilNextLuteal = $nextLutealStart->diffInDays($specifiedDate);
+                    break;
+                }
+
                 if ($specifiedDate->between($lutealStart, $lutealEnd)) {
                     $event = 'Luteal Phase';
                     $pregnancy_chances = "Low";
@@ -953,9 +961,26 @@ class MainController extends Controller
                     $daysUntilNextFertile = $nextFertileStart->diffInDays($specifiedDate);
                     $daysUntilNextLuteal = $nextLutealStart->diffInDays($specifiedDate);
                     break;
-                }
-                
+                }                
             }
+
+            $motherDateOfBirth = Carbon::parse($user->tanggal_lahir);
+            $motherAge = $motherDateOfBirth->age;
+            $motherLunarAge = $this->calculateLunarAge($motherAge, $specifiedDate);
+            $lunarSpecifiedDate = $this->calculateLunarDate($specifiedDate->toDateString());
+            $chineseGenderPrediction = null;
+
+            if ($motherAge > 18) {
+                $chineseGenderPrediction = [
+                    "age" => $motherAge,
+                    "lunarAge" => $motherLunarAge,
+                    "dateOfBirth" => $motherDateOfBirth->toDateString(),
+                    "lunarDateOfBirth" => $this->calculateLunarDate($motherDateOfBirth->toDateString()),
+                    "specifiedDate" => $specifiedDate->toDateString(),
+                    "lunarSpecifiedDate" => $lunarSpecifiedDate,
+                    "genderPrediction" => $this->chineseCalendarGenderPrediction($lunarSpecifiedDate, $motherLunarAge),
+                ] ;
+            } 
 
             # Return Response
             return response()->json([
@@ -981,18 +1006,43 @@ class MainController extends Controller
                     "daysUntilNextFertile" => $daysUntilNextFertile ?? null,
                     "nextLutealStart" => $nextLutealStart ? $nextLutealStart->toDateString() : null,
                     "nextLutealEnd" => $nextLutealEnd ? $nextLutealEnd->toDateString() : null,
-                    "daysUntilNextLuteal" => $daysUntilNextLuteal ?? null
+                    "daysUntilNextLuteal" => $daysUntilNextLuteal ?? null,
+                    "chineseGenderPrediction" => $chineseGenderPrediction,
+                    "shettlesGenderPrediction" => $shettlesGenderPrediction
                 ]                
-            ], 200);
+            ], Response::HTTP_OK);
         } catch (\Throwable $th) {
             return response()->json([
                 "status" => "failed",
                 "message" => "Failed to get data".' | '.$th->getMessage(),
-            ], 400);
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
-    private function calculateLunarAge($age) {
+    public function syncData(Request $request) {
+        $user = Login::where('token', $request->header('user_id'))->first();
+        $user_id = $user->id;
+        $period_history = RiwayatMens::where("user_id", $user_id)->orderBy('haid_awal', 'ASC')->get();
+        $pregnancy_history = RiwayatKehamilan::where("user_id", $user_id)->orderBy('hari_pertama_haid_terakhir', 'ASC')->get();
+        $log_history = RiwayatLog::where("user_id", $user_id)->first();
+        $weight_gain_history = BeratIdealIbuHamil::where("user_id", $user_id)->orderBy('minggu_kehamilan', 'ASC')->orderBy('tanggal_pencatatan', 'ASC')->get();
+
+        $data = [
+            "user" => $user,
+            "period_history" => $period_history,
+            "pregnancy_history" => $pregnancy_history,
+            "log_history" => $log_history,
+            "weight_gain_history" => $weight_gain_history,
+        ];
+
+        return response()->json([
+            "status" => "success",
+            "message" => __('response.getting_data'),
+            "data" => $data
+        ], Response::HTTP_OK);
+    }
+
+    private function calculateLunarAge($age, $calculateOn = null) {
         $chinese_new_year = [
             '1930-01-29', '1931-02-17', '1932-02-06', '1933-01-26', '1934-02-14',
             '1935-02-04', '1936-01-24', '1937-02-11', '1938-01-31', '1939-02-19',
@@ -1032,12 +1082,32 @@ class MainController extends Controller
 
         $lunar_age = $age;
 
-        if ($current_date->gt($matching_date)) {
-            $lunar_age += 2;
+        if ($calculateOn === null) {
+            $lunar_age += $current_date->gt($matching_date) ? 2 : 1;
         } else {
-            $lunar_age += 1;
+            $lunar_age += ($current_date->gt($matching_date) && $calculateOn->gt($matching_date)) ? 2 : 1;
         }
 
         return $lunar_age;
+    }
+
+    private function calculateLunarDate($date) {
+        $previousNewMoonData = MasterNewMoon::where('new_moon', '<', $date)
+                                         ->orderBy('new_moon', 'desc')
+                                         ->first();
+        $previousNewMoon = $previousNewMoonData->new_moon;
+        $lunarYear = Carbon::parse($previousNewMoon)->year;
+        $lunarMonth = $previousNewMoonData->lunar_month;
+        $lunarDays = Carbon::parse($previousNewMoon)->diffInDays($date) + 1;
+        $lunarDate = Carbon::createFromDate($lunarYear, $lunarMonth, 0)->addDays($lunarDays)->format('Y-m-d');
+        return $lunarDate;
+    }
+
+    private function chineseCalendarGenderPrediction($date, $lunarAge) {
+        $lunarMonth = Carbon::parse($date)->month;
+        $predictedBabyGender = MasterGender::where('usia', $lunarAge)
+                                ->where('bulan', $lunarMonth)
+                                ->value('gender');
+        return $predictedBabyGender;
     }
 }
