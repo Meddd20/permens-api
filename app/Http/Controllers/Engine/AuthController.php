@@ -109,7 +109,7 @@ class AuthController extends Controller
             'email' => [
                 'required',
                 'email:dns',
-                Rule::unique('tb_1001#', 'email')->where(function ($query) {
+                Rule::unique('tb_user', 'email')->where(function ($query) {
                     $query->where('status', 'Verified');
                 }),
                 'max:190',
@@ -386,7 +386,7 @@ class AuthController extends Controller
     public function changePassword(Request $request) {
         # Input Validation
         $rules = [
-            'email' => "required|email:dns|max:190|exists:tb_1001#,email",
+            'email' => "required|email:dns|max:190|exists:tb_user,email",
             'new_password' => "required|min:8|same:new_password_confirmation",
             'new_password_confirmation' => "required|min:8|same:new_password",
         ];

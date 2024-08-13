@@ -9,7 +9,6 @@ use App\Http\Controllers\Engine\PregnancyController;
 use App\Http\Controllers\Engine\QuickCalController;
 use App\Http\Controllers\Engine\NewsController;
 use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\NotificationSchedulerController;
 use Illuminate\Support\Facades\Route;
 
 /*
