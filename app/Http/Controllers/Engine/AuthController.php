@@ -504,8 +504,7 @@ class AuthController extends Controller
         try {
             Mail::raw($content, function ($message) use ($request) {
                 $message->to($request->email)
-                        ->subject('Kalender Menstruasi dan Kehamilan by Medhiko - Kode Verifikasi Email')
-                        ->from(config('mail.from.address'), config('mail.from.name'));
+                        ->subject('Kalender Menstruasi dan Kehamilan by Medhiko - Kode Verifikasi Email');
             });
 
             return response()->json([

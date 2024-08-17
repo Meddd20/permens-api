@@ -11,6 +11,7 @@ use App\Models\MasterKehamilan;
 use App\Models\RiwayatKehamilan;
 use App\Http\Controllers\Controller;
 use App\Models\BeratIdealIbuHamil;
+use App\Models\MasterDataVersion;
 use App\Models\MasterNewMoon;
 use App\Models\RiwayatLog;
 use Illuminate\Support\Facades\Validator;
@@ -1026,6 +1027,7 @@ class MainController extends Controller
         $pregnancy_history = RiwayatKehamilan::where("user_id", $user_id)->orderBy('hari_pertama_haid_terakhir', 'ASC')->get();
         $log_history = RiwayatLog::where("user_id", $user_id)->first();
         $weight_gain_history = BeratIdealIbuHamil::where("user_id", $user_id)->orderBy('minggu_kehamilan', 'ASC')->orderBy('tanggal_pencatatan', 'ASC')->get();
+        $master_data_version = MasterDataVersion::all();
 
         $data = [
             "user" => $user,
@@ -1033,6 +1035,7 @@ class MainController extends Controller
             "pregnancy_history" => $pregnancy_history,
             "log_history" => $log_history,
             "weight_gain_history" => $weight_gain_history,
+            "master_data_version" => $master_data_version,
         ];
 
         return response()->json([

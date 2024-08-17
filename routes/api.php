@@ -8,6 +8,10 @@ use App\Http\Controllers\Engine\PeriodController;
 use App\Http\Controllers\Engine\PregnancyController;
 use App\Http\Controllers\Engine\QuickCalController;
 use App\Http\Controllers\Engine\NewsController;
+use App\Http\Controllers\MasterFoodController;
+use App\Http\Controllers\MasterKehamilanController;
+use App\Http\Controllers\MasterVaccineController;
+use App\Http\Controllers\MasterVitaminController;
 use App\Http\Controllers\NotificationController;
 use Illuminate\Support\Facades\Route;
 
@@ -42,12 +46,15 @@ Route::middleware("api_key")->group(function() {
     Route::post('pregnancy/begin', [PregnancyController::class, 'pregnancyBegin']);
     Route::get('articles/show-articles/{id}', [NewsController::class, 'showNews']);
     Route::get('articles/show-all-articles', [NewsController::class, 'showAllNews']);
+
+    Route::get('master/get-food', [MasterFoodController::class, 'getAllFood']);
+    Route::get('master/get-pregnancy', [MasterKehamilanController::class, 'getAllDataKehamilan']);
+    Route::get('master/get-vaccines', [MasterVaccineController::class, 'getAllVaccineData']);
+    Route::get('master/get-vitamins', [MasterVitaminController::class, 'getAllVitaminData']);
     
     Route::middleware("validate_user")->group(function() {
         Route::post('/send-notification', [NotificationController::class, 'send']);
         Route::post('/notifications/token', [NotificationController::class, 'store']);
-        // Route::post('/notifications/schedule/send', [NotificationSchedulerController::class, 'sendNotifications']);
-        // Route::delete('/notifications/schedule/{user_id}', [NotificationSchedulerController::class, 'deleteOldNotifications']);
 
         Route::get('period/index', [MainController::class, 'index']);
         Route::post('period/index/filter', [MainController::class, 'filter']);
@@ -95,5 +102,21 @@ Route::middleware("api_key")->group(function() {
         Route::post('articles/create-articles', [NewsController::class, 'createNews']);
         Route::post('articles/update-articles/{id}', [NewsController::class, 'updateNews']);
         Route::delete('articles/delete-articles/{id}', [NewsController::class, 'deleteNews']);
+        
+        Route::post('master/create-pregnancy', [MasterKehamilanController::class, 'createDataKehamilan']);
+        Route::post('master/update-pregnancy/{id}', [MasterKehamilanController::class, 'updateDataKehamilan']);
+        Route::delete('master/delete-pregnancy/{id}', [MasterKehamilanController::class, 'deleteDataKehamilan']);
+
+        Route::post('master/create-food', [MasterFoodController::class, 'createFood']);
+        Route::post('master/update-food/{id}', [MasterFoodController::class, 'updateFood']);
+        Route::delete('master/delete-food/{id}', [MasterFoodController::class, 'deleteFood']);
+
+        Route::post('master/create-vaccines', [MasterVaccineController::class, 'createVaccineData']);
+        Route::post('master/update-vaccines/{id}', [MasterVaccineController::class, 'updateVaccineData']);
+        Route::delete('master/delete-vaccines/{id}', [MasterVaccineController::class, 'deleteVaccineData']);
+        
+        Route::post('master/create-vitamins', [MasterVitaminController::class, 'createVitaminData']);
+        Route::post('master/update-vitamins/{id}', [MasterVitaminController::class, 'updateVitaminData']);
+        Route::delete('master/delete-vitamins/{id}', [MasterVitaminController::class, 'deleteVitaminData']);
     });
 });

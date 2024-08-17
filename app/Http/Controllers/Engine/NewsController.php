@@ -10,13 +10,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Komentar;
 use App\Models\KomentarLike;
 use App\Models\Login;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
 
 class NewsController extends Controller
 {
     public function createNews(Request $request) {
-        # Input Validations
+        $news_tags = ["Premenstrual Syndrome (PMS)", "Pregnancy", "Ovulation", "Ovulation", "Menstruation", "Trying to conceive", "Fertility", "Sex", "Perimenopause", "Birth Control"];
+
         $rules = [
             "writter" => "required|string|max:100",
             "title_ind" => "required|string|max:190",
@@ -28,7 +30,7 @@ class NewsController extends Controller
             "content_eng" => "required|string",
             "video_link" => "required|string|max:255",
             "source" => "required|string|max:255",
-            "tags" => "required|string",
+            "tags" => ["required", Rule::in($news_tags)],
         ];
         $messages = [];
         $attributes = [
@@ -98,7 +100,8 @@ class NewsController extends Controller
     }
 
     public function updateNews(Request $request, $id) {
-        # Input Validations
+        $news_tags = ["Premenstrual Syndrome (PMS)", "Pregnancy", "Ovulation", "Ovulation", "Menstruation", "Trying to conceive", "Fertility", "Sex", "Perimenopause", "Birth Control"];
+
         $rules = [
             "writter" => "required|string|max:100",
             "title_ind" => "required|string|max:190",
@@ -110,7 +113,7 @@ class NewsController extends Controller
             "content_eng" => "required|string",
             "video_link" => "required|string|max:255",
             "source" => "required|string|max:255",
-            "tags" => "required|string",
+            "tags" => ["required", Rule::in($news_tags)],
         ];
         $messages = [];
         $attributes = [
@@ -165,7 +168,6 @@ class NewsController extends Controller
                 $file->move(public_path($filePath), $fileName);
                 $updateData['banner'] = $filePath . $fileName;
 
-                // Delete the old banner if it exists
                 if ($article->banner && file_exists(public_path($article->banner))) {
                     unlink(public_path($article->banner));
                 }
@@ -254,8 +256,6 @@ class NewsController extends Controller
                         'parent_comment_user_id' => $parentComment['parent_comment_user_id'],
                         'content' => $parentComment['content'],
                         'likes' => $parentComment['likes'],
-                        'is_pinned' => $parentComment['is_pinned'],
-                        'is_hidden' => $parentComment['is_hidden'],
                         'created_at' => $parentComment['created_at'],
                         'updated_at' => $parentComment['updated_at'],
                         'is_liked_by_active_user' => $isLikedByActiveUser,
@@ -278,8 +278,6 @@ class NewsController extends Controller
                                 'parent_comment_user_username' => Login::where("id", $childComment['parent_comment_user_id'])->value('nama'),
                                 'content' => $childComment['content'],
                                 'likes' => $childComment['likes'],
-                                'is_pinned' => $childComment['is_pinned'],
-                                'is_hidden' => $childComment['is_hidden'],
                                 'created_at' => $childComment['created_at'],
                                 'updated_at' => $childComment['updated_at'],
                                 'is_liked_by_active_user' => $isLikedByActiveUser,
