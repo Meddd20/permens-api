@@ -10,6 +10,7 @@ use App\Models\KomentarLike;
 use App\Models\Login;
 use App\Models\RiwayatKehamilan;
 use App\Models\RiwayatLog;
+use App\Models\RiwayatLogKehamilan;
 use App\Models\RiwayatMens;
 use App\Models\Verifikasi;
 use Illuminate\Http\Request;
@@ -365,6 +366,7 @@ class AuthController extends Controller
 
             RiwayatMens::where('user_id', $user->id)->delete();
             BeratIdealIbuHamil::where('user_id', $user->id)->delete();
+            RiwayatLogKehamilan::where('user_id', $user->id)->delete();
             RiwayatKehamilan::where('user_id', $user->id)->delete();
             RiwayatLog::where('user_id', $user->id)->delete();
 

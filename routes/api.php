@@ -8,11 +8,12 @@ use App\Http\Controllers\Engine\PeriodController;
 use App\Http\Controllers\Engine\PregnancyController;
 use App\Http\Controllers\Engine\QuickCalController;
 use App\Http\Controllers\Engine\NewsController;
-use App\Http\Controllers\MasterFoodController;
-use App\Http\Controllers\MasterKehamilanController;
-use App\Http\Controllers\MasterVaccineController;
-use App\Http\Controllers\MasterVitaminController;
-use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Engine\LogKehamilanController;
+use App\Http\Controllers\Engine\MasterFoodController;
+use App\Http\Controllers\Engine\MasterKehamilanController;
+use App\Http\Controllers\Engine\MasterVaccineController;
+use App\Http\Controllers\Engine\MasterVitaminController;
+use App\Http\Controllers\Engine\NotificationController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -63,7 +64,17 @@ Route::middleware("api_key")->group(function() {
         
         Route::patch('period/update-period', [PeriodController::class, 'updatePeriod']);
         Route::post('period/store-prediction', [PeriodController::class, 'storePrediction']);
+
+        Route::patch('daily-log/update-log', [LogsController::class, 'storeLog']);
+        Route::delete('daily-log/delete-log', [LogsController::class, 'deleteLog']);
+        Route::get('daily-log/read-log-by-date', [LogsController::class, 'logsbydate']);
+        Route::get('daily-log/read-log-by-tag', [LogsController::class, 'logsByTags']);
     
+        Route::get('reminder/get-all-reminder', [LogsController::class, 'getAllReminder']);
+        Route::post('reminder/store-reminder', [LogsController::class, 'storeReminder']);
+        Route::patch('reminder/edit-reminder/{id}', [LogsController::class, 'updateReminder']);
+        Route::delete('reminder/delete-reminder/{id}', [LogsController::class, 'deleteReminder']);
+
         Route::get('pregnancy/index', [MainController::class, 'pregnancyIndex']);
         Route::post('pregnancy/end', [PregnancyController::class, 'pregnancyEnd']);
         Route::post('pregnancy/delete', [PregnancyController::class, 'deletePregnancy']);
@@ -72,17 +83,25 @@ Route::middleware("api_key")->group(function() {
         Route::post('pregnancy/weekly-weight-gain', [PregnancyController::class, 'weeklyWeightGain']);
         Route::delete('pregnancy/delete-weekly-weight-gain', [PregnancyController::class, 'deleteWeeklyWeightGain']);
         Route::get('pregnancy/pregnancy-weight-gain', [PregnancyController::class, 'PregnancyWeightGainIndex']);
-    
-        Route::patch('daily-log/update-log', [LogsController::class, 'storeLog']);
-        Route::delete('daily-log/delete-log', [LogsController::class, 'deleteLogByDate']);
-        Route::get('daily-log/read-all-log', [LogsController::class, 'alllogs']);
-        Route::get('daily-log/read-log-by-date', [LogsController::class, 'logsbydate']);
-        Route::get('daily-log/read-log-by-tag', [LogsController::class, 'logsByTags']);
-    
-        Route::get('reminder/get-all-reminder', [LogsController::class, 'getAllReminder']);
-        Route::post('reminder/store-reminder', [LogsController::class, 'storeReminder']);
-        Route::patch('reminder/edit-reminder/{id}', [LogsController::class, 'updateReminder']);
-        Route::delete('reminder/delete-reminder/{id}', [LogsController::class, 'deleteReminder']);
+
+        Route::patch('pregnancy/add-pregnancy-log', [LogKehamilanController::class, 'addPregnancyLog']);
+        Route::delete('pregnancy/delete-pregnancy-log', [LogKehamilanController::class, 'deletePregnancyLog']);
+        Route::get('pregnancy/pregnancy-log-by-date', [LogKehamilanController::class, 'pregnancyLogsByDate']);
+        Route::get('pregnancy/pregnancy-log-by-tags', [LogKehamilanController::class, 'pregnancyLogsByTags']);
+
+        Route::post('pregnancy/add-blood-pressure', [LogKehamilanController::class, 'addBloodPressure']);
+        Route::patch('pregnancy/edit-blood-pressure/{id}', [LogKehamilanController::class, 'editBloodPressure']);
+        Route::delete('pregnancy/delete-blood-pressure/{id}', [LogKehamilanController::class, 'deleteBloodPressure']);
+        Route::get('pregnancy/get-blood-pressure', [LogKehamilanController::class, 'getAllBloodPressure']);
+
+        Route::post('pregnancy/add-contraction-timer', [LogKehamilanController::class, 'addContractionTimer']);
+        Route::delete('pregnancy/delete-contraction-timer/{id}', [LogKehamilanController::class, 'deleteContractionTimer']);
+        Route::get('pregnancy/get-contraction-timer', [LogKehamilanController::class, 'getAllContractionTimer']);
+
+        Route::post('pregnancy/add-kicks-counter', [LogKehamilanController::class, 'addKicksCounter']);
+        Route::post('pregnancy/add-kicks-counter-data', [LogKehamilanController::class, 'addKickCounterData']);
+        Route::delete('pregnancy/delete-kicks-counter/{id}', [LogKehamilanController::class, 'deleteKicksCounter']);
+        Route::get('pregnancy/get-kicks-counter', [LogKehamilanController::class, 'getAllKicksCounter']);
     
         Route::get('auth/sync-data', [MainController::class, 'syncData']);
         Route::get('auth/get-profile', [AuthController::class, 'showProfile']);

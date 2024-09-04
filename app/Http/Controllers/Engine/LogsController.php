@@ -234,14 +234,29 @@ class LogsController extends Controller
         }
     }
 
-    public function deleteLogByDate(Request $request) 
+    public function deleteLog(Request $request) 
     {
+        $rules = [
+            "date" => "required|date|before:now",
+        ];
+        $messages = [];
+        $attributes = [
+            "date" => __('attribute.date'),
+        ];
+        $validator = Validator::make($request->all(), $rules, $messages, $attributes);
+        $validator->stopOnFirstFailure();
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $validator->errors()->first()
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
         try {
             $user = Login::where('token', $request->header('user_id'))->first();
             $user_id = $user->id;
-            $dateToDelete = $request->input('date');
+            $dateToDelete = $request->date;
         
-            // Cari data pengguna berdasarkan ID pengguna dan tanggal yang akan dihapus
             $userData = RiwayatLog::where('user_id', $user_id)->first();
         
             if ($userData) {
@@ -276,33 +291,6 @@ class LogsController extends Controller
             return response()->json([
                 'status' => 'failed',
                 'message' => "Failed to delete log".' | '.$th->getMessage(),
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    public function allLogs(Request $request) 
-    {
-        try {
-            $user = Login::where('token', $request->header('user_id'))->first();
-            $user_id = $user->id;
-            $userData = RiwayatLog::where('user_id', $user_id)->first();
-        
-            if (!$userData) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => __('response.user_data_not_found'),
-                ], Response::HTTP_NOT_FOUND);
-            }
-        
-            return response()->json([
-                'status' => 'success',
-                'message' => __('response.log_retrieved_success'),
-                'data' => $userData->data_harian
-            ], Response::HTTP_OK);
-        } catch (\Throwable $th) {
-            return response()->json([
-                'status' => 'failed',
-                'message' => "Failed to retrieve log ".' | '.$th->getMessage(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -464,27 +452,6 @@ class LogsController extends Controller
                 'message' => 'Failed to retrieve log by tags.' . $th->getMessage(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-    }
-
-    function calculatePercentage($tagsValues, $startDate) {
-        $allValues = [];
-    
-        foreach ($tagsValues as $date => $data) {
-            if (strtotime($date) >= strtotime($startDate)) {
-                $allValues = array_merge($allValues, is_array($data) ? array_values($data) : [$data]);
-            }
-        }
-    
-        $occurrences = array_count_values($allValues);
-        $totalOccurrences = count($allValues);
-        $percentageOccurrences = [];
-    
-        foreach ($occurrences as $value => $count) {
-            $percentage = ($count / $totalOccurrences) * 100;
-            $percentageOccurrences[$value] = $percentage;
-        }
-    
-        return $percentageOccurrences;
     }
 
     function findOccurrences($tagsValues, $startDate) {
