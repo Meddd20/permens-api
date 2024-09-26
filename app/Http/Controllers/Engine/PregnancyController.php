@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use App\Models\BeratIdealIbuHamil;
 use App\Models\Login;
+use App\Models\RiwayatLogKehamilan;
 use App\Models\RiwayatMens;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,7 +18,6 @@ class PregnancyController extends Controller
 {
     public function pregnancyBegin(Request $request)
     {
-        # Input Validation
         $validated = $request->validate([
             'hari_pertama_haid_terakhir' => 'required|date_format:Y-m-d|before_or_equal:today'
         ]);
@@ -40,16 +40,9 @@ class PregnancyController extends Controller
         $isCurrentKehamilanAvailable = RiwayatKehamilan::where('user_id', $user_id)
                 ->where('status', 'Hamil')
                 ->first();
-
-        $successResponse = [
-            "status" => "success",
-            "message" => __('response.saving_success')
-        ];
     
-        # Return Response
         try {
             DB::beginTransaction();
-                # Update the last period cycle data with the average cycle length to end the last period cycle before the current pregnancy
                 if ($riwayatMensData->isNotEmpty()) {
                     $last_period_data = $riwayatMensData->sortByDesc('haid_awal')->first();
                 
@@ -64,19 +57,14 @@ class PregnancyController extends Controller
                     }
                 }
 
-                # Check if the user is already marked as pregnant and if there is a current pregnancy record
                 if ($user->is_pregnant == 1 && $isCurrentKehamilanAvailable != null) {
-                    # Update the current pregnancy record with the new last menstruation date and estimated due date
                     $isCurrentKehamilanAvailable->update([
                         "hari_pertama_haid_terakhir" => $request->hari_pertama_haid_terakhir,
                         "tanggal_perkiraan_lahir" => $estimated_due_dates,
                     ]);
 
-                    DB::commit();
-                    
-                    return response()->json($successResponse, Response::HTTP_OK);
+                    $pregnancyData = $isCurrentKehamilanAvailable;
                 } else {
-                    # Create a new pregnancy record if the user is not currently marked as pregnant
                     $current_new_pregnancy = RiwayatKehamilan::create([
                         "user_id" => $user_id,
                         "status" => 'Hamil',
@@ -88,11 +76,14 @@ class PregnancyController extends Controller
                     Login::where('id', $user_id)->update([
                         "is_pregnant" => '1'
                     ]);
-
-                    DB::commit();
-
-                    return response()->json(array_merge($successResponse, ["data" => $current_new_pregnancy]), Response::HTTP_OK);
+                    $pregnancyData = $current_new_pregnancy;
                 }
+                DB::commit();
+                return response()->json([
+                    "status" => "success",
+                    "message" => __('response.saving_success'),
+                    "data" => $pregnancyData
+                ], Response::HTTP_OK);
             DB::commit();
 
         } catch (\Throwable $th) {
@@ -106,7 +97,6 @@ class PregnancyController extends Controller
 
     public function pregnancyEnd(Request $request)
     {
-        # Input Validation
         $validated = $request->validate([
             'pregnancy_end' => 'required|date_format:Y-m-d|before_or_equal:today',
             'gender' => 'required|in:Boy,Girl'
@@ -115,19 +105,18 @@ class PregnancyController extends Controller
         $user = Login::where('token', $request->header('user_id'))->first();
         $user_id = $user->id;
 
-        # Return Response
+        $pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                        ->where('status', "Hamil")
+                        ->first();
+
+        if (!$pregnancy) {
+            return response()->json([
+                'status' => 'failed',
+                'message' => __('response.pregnancy_not_found')
+            ], Response::HTTP_NOT_FOUND);
+        }
+
         try {
-            $pregnancy = RiwayatKehamilan::where('user_id', $user_id)
-                            ->where('status', "Hamil")
-                            ->first();
-
-            if (!$pregnancy) {
-                return response()->json([
-                    'status' => 'failed',
-                    'message' => __('response.pregnancy_not_found')
-                ], Response::HTTP_NOT_FOUND);
-            }
-
             DB::beginTransaction();
 
                 $pregnancy->update([
@@ -137,7 +126,7 @@ class PregnancyController extends Controller
                 ]);
 
                 Login::where('id', $user_id)->update([
-                    "is_pregnant" => '0'
+                    "is_pregnant" => '2'
                 ]);
 
             DB::commit();
@@ -148,7 +137,6 @@ class PregnancyController extends Controller
             ], Response::HTTP_OK);
         } catch (\Throwable $th) {
             DB::rollback();
-
             return response()->json([
                 "status" => "failed",
                 "message" => __('response.saving_failed') . ' | ' . $th->getMessage()
@@ -165,7 +153,10 @@ class PregnancyController extends Controller
                             ->first();
         $weight_history = BeratIdealIbuHamil::where('user_id', $user_id)
                             ->where('riwayat_kehamilan_id', $pregnancy->id)
-                            ->get();    
+                            ->get();
+        $pregnancy_log = RiwayatLogKehamilan::where('user_id', $user_id)
+                            ->where('riwayat_kehamilan_id', $pregnancy->id)
+                            ->first();  
 
         if (!$pregnancy) {
             return response()->json([
@@ -178,13 +169,14 @@ class PregnancyController extends Controller
         try {
             DB::beginTransaction();
                 Login::where('id', $user_id)->update([
-                    "is_pregnant" => '0'
+                    "is_pregnant" => '2'
                 ]);
 
                 foreach ($weight_history as $weight) {
                     $weight->delete();
                 }
                 
+                $pregnancy_log->delete();
                 $pregnancy->delete();
             DB::commit();
 

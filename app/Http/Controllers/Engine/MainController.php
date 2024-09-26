@@ -247,104 +247,6 @@ class MainController extends Controller
         }
     }
 
-    public function filter(Request $request)
-    {
-        # Input Validation
-        $validated = $request->validate([
-            'year' => 'required|date_format:Y|before_or_equal:' . now()->year
-        ]);
-
-        try {
-            # Get User Data (Current Year, User ID, User Age, User Lunar Age)
-            $current_year = $request->year;
-            $user = Login::where('token', $request->header('user_id'))->first();
-            $user_id = $user->id;
-            $age = Carbon::parse($user->tanggal_lahir)->age;
-            $lunar_age = $this->calculateLunarAge($age);
-    
-            # Get Period History (All Period History, Actual Period History, Predction Period History)
-            $period_history = RiwayatMens::where('user_id', $user_id)->whereYear('haid_awal', $current_year)->orderBy('haid_awal', 'DESC')->get();
-            $actual_period_history = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->whereYear('haid_awal', $current_year)->orderBy('haid_awal', 'DESC')->get();
-            $prediction_period_history = RiwayatMens::where('user_id', $user_id)->where('is_actual', '0')->whereYear('haid_awal', $current_year)->orderBy('haid_awal', 'DESC')->get();
-
-            if (count($actual_period_history) > 0) {
-                foreach ($actual_period_history as $data) {
-                    $start_date = Carbon::parse($data->haid_awal)->format('Y-m-d');
-                    $end_date = Carbon::parse($data->haid_akhir)->format('Y-m-d');
-                    
-                    if (count($actual_period_history) == 1) {
-                        $predicted_end_date = Carbon::parse($start_date)->addDays($data->lama_siklus ?? 0);
-                        $today = Carbon::now();
-
-                        if ($predicted_end_date->gte($today)) {
-                            $period_cycle = ($data->lama_siklus) ? $data->lama_siklus : Carbon::parse($start_date)->diffInDays(Carbon::now());
-                        } else {
-                            $period_cycle = Carbon::parse($start_date)->diffInDays($today);
-                        }
-                    } else {
-                        $period_cycle = ($data->lama_siklus) ? $data->lama_siklus : Carbon::parse($start_date)->diffInDays(Carbon::now());
-                    }
-
-                    $period_chart[] = [
-                        "id" => $data->id,
-                        "start_date" => $start_date,
-                        "end_date" => $end_date,
-                        "period_cycle" => $period_cycle,
-                        "period_duration" => $data->durasi_haid,
-                    ];
-                }
-            } else {
-                $period_chart[] = NULL;
-            }
-
-            # Get Period Data (Shortest Period, Longest Period, Shortest Cycle, Longest Cycle, Average Period Duration, Averatge Period Cycle)
-            $shortest_period = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->whereYear('haid_awal', $current_year)->orderBy('lama_siklus', 'ASC')->value('lama_siklus');
-            $longest_period = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->whereYear('haid_awal', $current_year)->orderBy('lama_siklus', 'DESC')->value('lama_siklus');
-            $shortest_cycle = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->whereYear('haid_awal', $current_year)->orderBy('durasi_haid', 'ASC')->value('lama_siklus');
-            $longest_cycle = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->whereYear('haid_awal', $current_year)->orderBy('durasi_haid', 'DESC')->value('lama_siklus');
-            $avg_period_duration = ceil(RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->whereYear('haid_awal', $current_year)->orderBy('haid_awal', 'DESC')->avg('durasi_haid'));
-            $avg_period_cycle = ceil(RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->whereYear('haid_awal', $current_year)->orderBy('haid_awal', 'DESC')->avg('lama_siklus'));
-            
-            $latest_period_history = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->whereYear('haid_awal', $current_year)->orderBy('haid_awal', 'DESC')->first();
-
-            if ($latest_period_history && $latest_period_history['hari_terakhir_siklus'] === null) {
-                $haid_awal = Carbon::parse($latest_period_history['haid_awal']);
-                $today = Carbon::now();
-                $lama_siklus = $haid_awal->diffInDays($today);
-                $latest_period_history['lama_siklus'] = $lama_siklus;
-            }
-    
-            # Return Response
-            return response()->json([
-                "status" => "success",
-                "message" => __('response.getting_data'),
-                "data" => [
-                    "initial_year" => Carbon::parse(RiwayatMens::where('user_id', $user_id)->orderBy('haid_awal', 'ASC')->first()->haid_awal ?? '')->format('Y'),
-                    "latest_year" => Carbon::parse(RiwayatMens::where('user_id', $user_id)->orderBy('haid_awal', 'DESC')->first()->haid_awal ?? '')->format('Y'),
-                    "current_year" => $current_year,
-                    "age" => $age,
-                    "lunar_age" => $lunar_age,
-                    "shortest_period" => $shortest_period,
-                    "longest_period" => $longest_period,
-                    "shortest_cycle" => $shortest_cycle,
-                    "longest_cycle" => $longest_cycle,
-                    "avg_period_duration" => $avg_period_duration,
-                    "avg_period_cycle" => $avg_period_cycle,
-                    "period_chart" => $period_chart,
-                    "latest_period_history" => $latest_period_history,
-                    "period_history" => $period_history,
-                    "actual_period" => $actual_period_history,
-                    "prediction_period" => $prediction_period_history,
-                ]
-            ], Response::HTTP_OK);
-        } catch (\Throwable $th) {
-            return response()->json([
-                "status" => "failed",
-                "message" => "Failed to get data".' | '.$th->getMessage(),
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-    }
-
     public function currentDateEvent(Request $request) {
         # Input Validation
         $rules = [
@@ -369,6 +271,7 @@ class MainController extends Controller
             ->orderBy('haid_awal', 'asc')
             ->get();
         $recordsCount = count($periodHistory);
+        $pregnancy_history = RiwayatKehamilan::where('user_id', $user_id)->get();
 
         // Determine events on the specified date
         $specifiedDate = Carbon::parse($request->input('date_selected'));
@@ -390,6 +293,7 @@ class MainController extends Controller
         $nextLutealStart = null;
         $nextLutealEnd = null;
         $eventId = null;
+        $event = null;
         $pregnancy_chances = null;
         $lutealEnd = null;
         $dayOfCycle = null;
@@ -397,214 +301,231 @@ class MainController extends Controller
         $shettlesGenderPrediction = null;
 
         try {
-            foreach ($periodHistory as $key => $period) {
-                $currentIsActual = $period->is_actual;
-            
-                // Check if there is a next record
-                if ($key < $recordsCount - 1) {
-                    $nextRecord = $periodHistory[$key + 1];
-                    $nextIsActual = $nextRecord->is_actual;
-            
-                    // Now you can check $currentIsActual and $nextIsActual
-                    if ($currentIsActual == 1 && $nextIsActual == 1) {
-                        $lutealEnd = Carbon::parse($period->hari_terakhir_siklus);
-                    } elseif ($currentIsActual == 0 && $nextIsActual == 0) {
-                        $lutealEnd = Carbon::parse($period->hari_terakhir_siklus);
-                    } elseif ($currentIsActual == 1 && $nextIsActual == 0) {
-                        $lutealEnd = Carbon::parse($period->haid_berikutnya_awal)->subDays(1);
-                    }
-                } else {
-                    // Handling the last record
-                    if ($currentIsActual == 0) {
-                        $lutealEnd = Carbon::parse($period->hari_terakhir_siklus);
+            if ($pregnancy_history->count() > 0) {
+                foreach ($pregnancy_history as $pregnancy) {
+                    $hari_pertama_haid_terakhir = $pregnancy->hari_pertama_haid_terakhir;
+                    $kehamilan_akhir = $pregnancy->kehamilan_akhir;
+                    if ($specifiedDate->between($hari_pertama_haid_terakhir, $kehamilan_akhir)) {
+                        $event = 'Pregnancy';
+                        $pregnancy_chances = "null";
+                        $eventId = $pregnancy->id;
+                        break;
                     }
                 }
-
-                $periodStart = Carbon::parse($period->haid_awal);
-                $periodEnd = Carbon::parse($period->haid_akhir);
-                $ovulation = Carbon::parse($period->ovulasi);
-                $fertileStart = Carbon::parse($period->masa_subur_awal);
-                $fertileEnd = Carbon::parse($period->masa_subur_akhir);
-                $follicularStart = Carbon::parse($periodEnd)->addDays(1);
-                $follicularEnd = Carbon::parse($fertileStart)->subDays(1);
-                $lutealStart = Carbon::parse($fertileEnd)->addDays(1);
-                
-                if ($currentIsActual == '1') {
-                    $firstDayOfMenstruation = Carbon::parse($period->haid_awal);
-                } else {
-                    $last_actual_period = RiwayatMens::where('user_id', $user_id)
-                                ->where('is_actual', '1')
-                                ->where('haid_awal', '<=', $period->haid_awal)
-                                ->where('id', '!=', $period->id)
-                                ->orderBy('haid_awal', 'DESC')
-                                ->first();
-                    $firstDayOfMenstruation = Carbon::parse($last_actual_period->haid_awal);
-                }
-                $dayOfCycle = Carbon::parse($firstDayOfMenstruation)->diffInDays($specifiedDate) + 1;
-
-                if ($specifiedDate->between($periodStart, $lutealEnd)) {
-                    $shettlesGenderPrediction = [
-                        "boyStartDate" => Carbon::parse($ovulation)->toDateString(),
-                        "boyEndDate" => Carbon::parse($ovulation)->addDays(3)->toDateString(),
-                        "girlStartDate" => Carbon::parse($periodEnd)->addDays(1)->toDateString(),
-                        "girlEndDate" => Carbon::parse($ovulation)->subDays(2)->toDateString()
-                    ];
-                }
-
-                if ($specifiedDate->between($periodStart, $periodEnd)) {
-                    $event = 'Menstruation Phase';
-                    $pregnancy_chances = "Low";
-                    $currentIsActual = $period->is_actual;
-                    $eventId = $period->id;
-                    
-                    // Check if it's the last record
-                    if ($key == $recordsCount - 1) {
-                        $nextMenstruationStart = Carbon::parse($period->haid_berikutnya_awal);
-                        $nextMenstruationEnd = Carbon::parse($period->haid_berikutnya_akhir);
-                    } else {
-                        $nextMenstruationStart = Carbon::parse($nextRecord->haid_awal);
-                        $nextMenstruationEnd = Carbon::parse($nextRecord->haid_akhir);
-                    }
-                    $daysUntilNextMenstruation = $nextMenstruationStart->diffInDays($specifiedDate);
-
-                    $nextOvulation = Carbon::parse($period->ovulasi);
-                    $daysUntilNextOvulation = $nextOvulation->diffInDays($specifiedDate);
-
-                    $nextFollicularStart = Carbon::parse($period->haid_akhir)->addDays(1);
-                    $nextFollicularEnd = Carbon::parse($period->masa_subur_awal)->subDays(1);
-                    $daysUntilNextFollicular = $nextFollicularStart->diffInDays($specifiedDate);
-
-                    $nextFertileStart = Carbon::parse($period->masa_subur_awal);
-                    $nextFertileEnd = Carbon::parse($period->masa_subur_akhir);
-                    $daysUntilNextFertile = $nextFertileStart->diffInDays($specifiedDate);
-
-                    $nextLutealStart = Carbon::parse($period->masa_subur_akhir)->addDays(1);
-                    $nextLutealEnd = Carbon::parse($nextRecord->haid_awal)->subDays(1);
-                    $daysUntilNextLuteal = $nextLutealStart->diffInDays($specifiedDate);
-                    break;
-                }
-
-                if ($specifiedDate->between($fertileStart, $fertileEnd)) {
-
-                    if ($specifiedDate->equalTo($ovulation)) {
-                        $event = 'Ovulation';
-                    } else {
-                        $event = 'Fertile Phase';
-                    }
-                    $pregnancy_chances = "High";
-                    $currentIsActual = $period->is_actual;
-                    $eventId = $period->id;
-
-                    // Check if it's the last record
-                    if ($key == $recordsCount - 1) {
-                        $nextMenstruationStart = Carbon::parse($period->haid_berikutnya_awal);
-                        $nextMenstruationEnd = Carbon::parse($period->haid_berikutnya_akhir);
-                        $nextFollicularStart = Carbon::parse($period->haid_berikutnya_akhir)->addDays(1);
-                        $nextFollicularEnd = Carbon::parse($period->masa_subur_berikutnya_awal)->subDays(1);
-                        $nextFertileStart = Carbon::parse($period->masa_subur_berikutnya_awal);
-                        $nextFertileEnd = Carbon::parse($period->masa_subur_berikutnya_akhir);
-                        $nextLutealEnd = Carbon::parse($period->haid_berikutnya_awal)->subDays(1);
-
-                        if ($specifiedDate < $ovulation) {
-                            $nextOvulation = Carbon::parse($period->ovulasi);
-                        } else {
-                            $nextOvulation = Carbon::parse($period->ovulasi_berikutnya);
-                        }
-                    } else {
-                        $nextMenstruationStart = Carbon::parse($nextRecord->haid_awal);
-                        $nextMenstruationEnd = Carbon::parse($nextRecord->haid_akhir);
-                        $nextFollicularStart = Carbon::parse($nextRecord->haid_akhir)->addDays(1);
-                        $nextFollicularEnd = Carbon::parse($nextRecord->masa_subur_awal)->subDays(1);
-                        $nextFertileStart = Carbon::parse($nextRecord->masa_subur_awal);
-                        $nextFertileEnd = Carbon::parse($nextRecord->masa_subur_akhir);
-                        $nextLutealEnd = Carbon::parse($period->haid_terakhir_siklus);
-
-                        if ($specifiedDate < $ovulation) {
-                            $nextOvulation = Carbon::parse($period->ovulasi);
-                        } else {
-                            $nextOvulation = Carbon::parse($nextRecord->ovulasi);
-                        }
-                    }
-                    $daysUntilNextMenstruation = $nextMenstruationStart->diffInDays($specifiedDate);
-                    $daysUntilNextOvulation = $nextOvulation->diffInDays($specifiedDate);
-                    $daysUntilNextFollicular = $nextFollicularStart->diffInDays($specifiedDate);
-                    $daysUntilNextFertile = $nextFertileStart->diffInDays($specifiedDate);
-
-                    $nextLutealStart = Carbon::parse($period->masa_subur_akhir)->addDays(1);
-                    $daysUntilNextLuteal = $nextLutealStart->diffInDays($specifiedDate);
-                    break;
-                }
-
-                if ($specifiedDate->between($follicularStart, $follicularEnd)) {
-                    $event = 'Follicular Phase';
-                    $pregnancy_chances = "Low";
-                    $currentIsActual = $period->is_actual;
-                    $eventId = $period->id;
-                    
-                    // Check if it's the last record
-                    if ($key == $recordsCount - 1) {
-                        $nextMenstruationStart = Carbon::parse($period->haid_berikutnya_awal);
-                        $nextMenstruationEnd = Carbon::parse($period->haid_berikutnya_akhir);
-                        $nextFollicularStart = Carbon::parse($period->haid_berikutnya_akhir)->addDays(1);
-                        $nextFollicularEnd = Carbon::parse($period->masa_subur_berikutnya_awal)->subDays(1);
-                    } else {
-                        $nextMenstruationStart = Carbon::parse($nextRecord->haid_awal);
-                        $nextMenstruationEnd = Carbon::parse($nextRecord->haid_akhir);
-                        $nextFollicularStart = Carbon::parse($nextRecord->haid_akhir)->addDays(1);
-                        $nextFollicularEnd = Carbon::parse($nextRecord->masa_subur_awal)->subDays(1);
-                    }
-                    $daysUntilNextMenstruation = $nextMenstruationStart->diffInDays($specifiedDate);
-                    $daysUntilNextFollicular = $nextFollicularStart->diffInDays($specifiedDate);
-
-                    $nextOvulation = Carbon::parse($period->ovulasi);
-                    $daysUntilNextOvulation = $nextOvulation->diffInDays($specifiedDate);
-
-                    $nextFertileStart = Carbon::parse($period->masa_subur_awal);
-                    $nextFertileEnd = Carbon::parse($period->masa_subur_akhir);
-                    $daysUntilNextFertile = $nextFertileStart->diffInDays($specifiedDate);
-
-                    $nextLutealStart = Carbon::parse($period->masa_subur_akhir);
-                    $nextLutealEnd = Carbon::parse($nextRecord->haid_awal);
-                    $daysUntilNextLuteal = $nextLutealStart->diffInDays($specifiedDate);
-                    break;
-                }
-
-                if ($specifiedDate->between($lutealStart, $lutealEnd)) {
-                    $event = 'Luteal Phase';
-                    $pregnancy_chances = "Low";
-                    $currentIsActual = $period->is_actual;
-                    $eventId = $period->id;
-
-                    // Check if it's the last record
-                    if ($key == $recordsCount - 1) {
-                        $nextMenstruationStart = Carbon::parse($period->haid_berikutnya_awal);
-                        $nextMenstruationEnd = Carbon::parse($period->haid_berikutnya_akhir);
-                        $nextFollicularStart = Carbon::parse($period->haid_berikutnya_akhir)->addDays(1);
-                        $nextFollicularEnd = Carbon::parse($period->masa_subur_berikutnya_awal)->subDays(1);
-                        $nextFertileStart = Carbon::parse($period->masa_subur_berikutnya_awal);
-                        $nextFertileEnd = Carbon::parse($period->masa_subur_berikutnya_akhir);
-                        $nextOvulation = Carbon::parse($period->ovulasi_berikutnya);
-                        $nextLutealStart = Carbon::parse($period->masa_subur_berikutnya_akhir)->addDays(1);
-                        $nextLutealEnd = Carbon::parse($period->hari_terakhir_siklus_berikutnya);
-                    } else {
-                        $nextMenstruationStart = Carbon::parse($nextRecord->haid_awal);
-                        $nextMenstruationEnd = Carbon::parse($nextRecord->haid_akhir);
-                        $nextFollicularStart = Carbon::parse($nextRecord->haid_akhir)->addDays(1);
-                        $nextFollicularEnd = Carbon::parse($nextRecord->masa_subur_awal)->subDays(1);
-                        $nextFertileStart = Carbon::parse($nextRecord->masa_subur_awal);
-                        $nextFertileEnd = Carbon::parse($nextRecord->masa_subur_akhir);
-                        $nextOvulation = Carbon::parse($nextRecord->ovulasi);
-                        $nextLutealStart = Carbon::parse($nextRecord->masa_subur_akhir)->addDays(1);
-                        $nextLutealEnd = Carbon::parse($nextRecord->haid_berikutnya_awal)->subDays(1);
-                    }
-                    $daysUntilNextMenstruation = $nextMenstruationStart->diffInDays($specifiedDate);
-                    $daysUntilNextOvulation = $nextOvulation->diffInDays($specifiedDate);
-                    $daysUntilNextFollicular = $nextFollicularStart->diffInDays($specifiedDate);
-                    $daysUntilNextFertile = $nextFertileStart->diffInDays($specifiedDate);
-                    $daysUntilNextLuteal = $nextLutealStart->diffInDays($specifiedDate);
-                    break;
-                }                
             }
+
+            if ($event === null) {
+                if ($periodHistory->count() > 0) {
+                    foreach ($periodHistory as $key => $period) {
+                        $currentIsActual = $period->is_actual;
+                    
+                        // Check if there is a next record
+                        if ($key < $recordsCount - 1) {
+                            $nextRecord = $periodHistory[$key + 1];
+                            $nextIsActual = $nextRecord->is_actual;
+                    
+                            // Now you can check $currentIsActual and $nextIsActual
+                            if ($currentIsActual == 1 && $nextIsActual == 1) {
+                                $lutealEnd = Carbon::parse($period->hari_terakhir_siklus);
+                            } elseif ($currentIsActual == 0 && $nextIsActual == 0) {
+                                $lutealEnd = Carbon::parse($period->hari_terakhir_siklus);
+                            } elseif ($currentIsActual == 1 && $nextIsActual == 0) {
+                                $lutealEnd = Carbon::parse($period->haid_berikutnya_awal)->subDays(1);
+                            }
+                        } else {
+                            // Handling the last record
+                            if ($currentIsActual == 0) {
+                                $lutealEnd = Carbon::parse($period->hari_terakhir_siklus);
+                            }
+                        }
+        
+                        $periodStart = Carbon::parse($period->haid_awal);
+                        $periodEnd = Carbon::parse($period->haid_akhir);
+                        $ovulation = Carbon::parse($period->ovulasi);
+                        $fertileStart = Carbon::parse($period->masa_subur_awal);
+                        $fertileEnd = Carbon::parse($period->masa_subur_akhir);
+                        $follicularStart = Carbon::parse($periodEnd)->addDays(1);
+                        $follicularEnd = Carbon::parse($fertileStart)->subDays(1);
+                        $lutealStart = Carbon::parse($fertileEnd)->addDays(1);
+                        
+                        if ($currentIsActual == '1') {
+                            $firstDayOfMenstruation = Carbon::parse($period->haid_awal);
+                        } else {
+                            $last_actual_period = RiwayatMens::where('user_id', $user_id)
+                                        ->where('is_actual', '1')
+                                        ->where('haid_awal', '<=', $period->haid_awal)
+                                        ->where('id', '!=', $period->id)
+                                        ->orderBy('haid_awal', 'DESC')
+                                        ->first();
+                            $firstDayOfMenstruation = Carbon::parse($last_actual_period->haid_awal);
+                        }
+                        $dayOfCycle = Carbon::parse($firstDayOfMenstruation)->diffInDays($specifiedDate) + 1;
+        
+                        if ($specifiedDate->between($periodStart, $lutealEnd)) {
+                            $shettlesGenderPrediction = [
+                                "boyStartDate" => Carbon::parse($ovulation)->toDateString(),
+                                "boyEndDate" => Carbon::parse($ovulation)->addDays(3)->toDateString(),
+                                "girlStartDate" => Carbon::parse($periodEnd)->addDays(1)->toDateString(),
+                                "girlEndDate" => Carbon::parse($ovulation)->subDays(2)->toDateString()
+                            ];
+                        }
+        
+                        if ($specifiedDate->between($periodStart, $periodEnd)) {
+                            $event = 'Menstruation Phase';
+                            $pregnancy_chances = "Low";
+                            $currentIsActual = $period->is_actual;
+                            $eventId = $period->id;
+                            
+                            // Check if it's the last record
+                            if ($key == $recordsCount - 1) {
+                                $nextMenstruationStart = Carbon::parse($period->haid_berikutnya_awal);
+                                $nextMenstruationEnd = Carbon::parse($period->haid_berikutnya_akhir);
+                            } else {
+                                $nextMenstruationStart = Carbon::parse($nextRecord->haid_awal);
+                                $nextMenstruationEnd = Carbon::parse($nextRecord->haid_akhir);
+                            }
+                            $daysUntilNextMenstruation = $nextMenstruationStart->diffInDays($specifiedDate);
+        
+                            $nextOvulation = Carbon::parse($period->ovulasi);
+                            $daysUntilNextOvulation = $nextOvulation->diffInDays($specifiedDate);
+        
+                            $nextFollicularStart = Carbon::parse($period->haid_akhir)->addDays(1);
+                            $nextFollicularEnd = Carbon::parse($period->masa_subur_awal)->subDays(1);
+                            $daysUntilNextFollicular = $nextFollicularStart->diffInDays($specifiedDate);
+        
+                            $nextFertileStart = Carbon::parse($period->masa_subur_awal);
+                            $nextFertileEnd = Carbon::parse($period->masa_subur_akhir);
+                            $daysUntilNextFertile = $nextFertileStart->diffInDays($specifiedDate);
+        
+                            $nextLutealStart = Carbon::parse($period->masa_subur_akhir)->addDays(1);
+                            $nextLutealEnd = Carbon::parse($nextRecord->haid_awal)->subDays(1);
+                            $daysUntilNextLuteal = $nextLutealStart->diffInDays($specifiedDate);
+                            break;
+                        }
+        
+                        if ($specifiedDate->between($fertileStart, $fertileEnd)) {
+        
+                            if ($specifiedDate->equalTo($ovulation)) {
+                                $event = 'Ovulation';
+                            } else {
+                                $event = 'Fertile Phase';
+                            }
+                            $pregnancy_chances = "High";
+                            $currentIsActual = $period->is_actual;
+                            $eventId = $period->id;
+        
+                            // Check if it's the last record
+                            if ($key == $recordsCount - 1) {
+                                $nextMenstruationStart = Carbon::parse($period->haid_berikutnya_awal);
+                                $nextMenstruationEnd = Carbon::parse($period->haid_berikutnya_akhir);
+                                $nextFollicularStart = Carbon::parse($period->haid_berikutnya_akhir)->addDays(1);
+                                $nextFollicularEnd = Carbon::parse($period->masa_subur_berikutnya_awal)->subDays(1);
+                                $nextFertileStart = Carbon::parse($period->masa_subur_berikutnya_awal);
+                                $nextFertileEnd = Carbon::parse($period->masa_subur_berikutnya_akhir);
+                                $nextLutealEnd = Carbon::parse($period->haid_berikutnya_awal)->subDays(1);
+        
+                                if ($specifiedDate < $ovulation) {
+                                    $nextOvulation = Carbon::parse($period->ovulasi);
+                                } else {
+                                    $nextOvulation = Carbon::parse($period->ovulasi_berikutnya);
+                                }
+                            } else {
+                                $nextMenstruationStart = Carbon::parse($nextRecord->haid_awal);
+                                $nextMenstruationEnd = Carbon::parse($nextRecord->haid_akhir);
+                                $nextFollicularStart = Carbon::parse($nextRecord->haid_akhir)->addDays(1);
+                                $nextFollicularEnd = Carbon::parse($nextRecord->masa_subur_awal)->subDays(1);
+                                $nextFertileStart = Carbon::parse($nextRecord->masa_subur_awal);
+                                $nextFertileEnd = Carbon::parse($nextRecord->masa_subur_akhir);
+                                $nextLutealEnd = Carbon::parse($period->haid_terakhir_siklus);
+        
+                                if ($specifiedDate < $ovulation) {
+                                    $nextOvulation = Carbon::parse($period->ovulasi);
+                                } else {
+                                    $nextOvulation = Carbon::parse($nextRecord->ovulasi);
+                                }
+                            }
+                            $daysUntilNextMenstruation = $nextMenstruationStart->diffInDays($specifiedDate);
+                            $daysUntilNextOvulation = $nextOvulation->diffInDays($specifiedDate);
+                            $daysUntilNextFollicular = $nextFollicularStart->diffInDays($specifiedDate);
+                            $daysUntilNextFertile = $nextFertileStart->diffInDays($specifiedDate);
+        
+                            $nextLutealStart = Carbon::parse($period->masa_subur_akhir)->addDays(1);
+                            $daysUntilNextLuteal = $nextLutealStart->diffInDays($specifiedDate);
+                            break;
+                        }
+        
+                        if ($specifiedDate->between($follicularStart, $follicularEnd)) {
+                            $event = 'Follicular Phase';
+                            $pregnancy_chances = "Low";
+                            $currentIsActual = $period->is_actual;
+                            $eventId = $period->id;
+                            
+                            // Check if it's the last record
+                            if ($key == $recordsCount - 1) {
+                                $nextMenstruationStart = Carbon::parse($period->haid_berikutnya_awal);
+                                $nextMenstruationEnd = Carbon::parse($period->haid_berikutnya_akhir);
+                                $nextFollicularStart = Carbon::parse($period->haid_berikutnya_akhir)->addDays(1);
+                                $nextFollicularEnd = Carbon::parse($period->masa_subur_berikutnya_awal)->subDays(1);
+                            } else {
+                                $nextMenstruationStart = Carbon::parse($nextRecord->haid_awal);
+                                $nextMenstruationEnd = Carbon::parse($nextRecord->haid_akhir);
+                                $nextFollicularStart = Carbon::parse($nextRecord->haid_akhir)->addDays(1);
+                                $nextFollicularEnd = Carbon::parse($nextRecord->masa_subur_awal)->subDays(1);
+                            }
+                            $daysUntilNextMenstruation = $nextMenstruationStart->diffInDays($specifiedDate);
+                            $daysUntilNextFollicular = $nextFollicularStart->diffInDays($specifiedDate);
+        
+                            $nextOvulation = Carbon::parse($period->ovulasi);
+                            $daysUntilNextOvulation = $nextOvulation->diffInDays($specifiedDate);
+        
+                            $nextFertileStart = Carbon::parse($period->masa_subur_awal);
+                            $nextFertileEnd = Carbon::parse($period->masa_subur_akhir);
+                            $daysUntilNextFertile = $nextFertileStart->diffInDays($specifiedDate);
+        
+                            $nextLutealStart = Carbon::parse($period->masa_subur_akhir);
+                            $nextLutealEnd = Carbon::parse($nextRecord->haid_awal);
+                            $daysUntilNextLuteal = $nextLutealStart->diffInDays($specifiedDate);
+                            break;
+                        }
+        
+                        if ($specifiedDate->between($lutealStart, $lutealEnd)) {
+                            $event = 'Luteal Phase';
+                            $pregnancy_chances = "Low";
+                            $currentIsActual = $period->is_actual;
+                            $eventId = $period->id;
+        
+                            // Check if it's the last record
+                            if ($key == $recordsCount - 1) {
+                                $nextMenstruationStart = Carbon::parse($period->haid_berikutnya_awal);
+                                $nextMenstruationEnd = Carbon::parse($period->haid_berikutnya_akhir);
+                                $nextFollicularStart = Carbon::parse($period->haid_berikutnya_akhir)->addDays(1);
+                                $nextFollicularEnd = Carbon::parse($period->masa_subur_berikutnya_awal)->subDays(1);
+                                $nextFertileStart = Carbon::parse($period->masa_subur_berikutnya_awal);
+                                $nextFertileEnd = Carbon::parse($period->masa_subur_berikutnya_akhir);
+                                $nextOvulation = Carbon::parse($period->ovulasi_berikutnya);
+                                $nextLutealStart = Carbon::parse($period->masa_subur_berikutnya_akhir)->addDays(1);
+                                $nextLutealEnd = Carbon::parse($period->hari_terakhir_siklus_berikutnya);
+                            } else {
+                                $nextMenstruationStart = Carbon::parse($nextRecord->haid_awal);
+                                $nextMenstruationEnd = Carbon::parse($nextRecord->haid_akhir);
+                                $nextFollicularStart = Carbon::parse($nextRecord->haid_akhir)->addDays(1);
+                                $nextFollicularEnd = Carbon::parse($nextRecord->masa_subur_awal)->subDays(1);
+                                $nextFertileStart = Carbon::parse($nextRecord->masa_subur_awal);
+                                $nextFertileEnd = Carbon::parse($nextRecord->masa_subur_akhir);
+                                $nextOvulation = Carbon::parse($nextRecord->ovulasi);
+                                $nextLutealStart = Carbon::parse($nextRecord->masa_subur_akhir)->addDays(1);
+                                $nextLutealEnd = Carbon::parse($nextRecord->haid_berikutnya_awal)->subDays(1);
+                            }
+                            $daysUntilNextMenstruation = $nextMenstruationStart->diffInDays($specifiedDate);
+                            $daysUntilNextOvulation = $nextOvulation->diffInDays($specifiedDate);
+                            $daysUntilNextFollicular = $nextFollicularStart->diffInDays($specifiedDate);
+                            $daysUntilNextFertile = $nextFertileStart->diffInDays($specifiedDate);
+                            $daysUntilNextLuteal = $nextLutealStart->diffInDays($specifiedDate);
+                            break;
+                        }                
+                    }
+                }
+            }            
 
             $motherDateOfBirth = Carbon::parse($user->tanggal_lahir);
             $motherAge = $motherDateOfBirth->age;
@@ -665,11 +586,23 @@ class MainController extends Controller
         $user = Login::where('token', $request->header('user_id'))->first();
         $user_id = $user->id;
         $period_history = RiwayatMens::where("user_id", $user_id)->orderBy('haid_awal', 'ASC')->get();
-        $pregnancy_history = RiwayatKehamilan::where("user_id", $user_id)->where('status', 'Hamil')->first();
         $log_history = RiwayatLog::where("user_id", $user_id)->first();
-        $pregnancy_log_history = RiwayatLogKehamilan::where("user_id", $user_id)->where("riwayat_kehamilan_id", $pregnancy_history->id)->first();
-        $weight_gain_history = BeratIdealIbuHamil::where("user_id", $user_id)->where("riwayat_kehamilan_id", $pregnancy_history->id)->orderBy('minggu_kehamilan', 'ASC')->orderBy('tanggal_pencatatan', 'ASC')->get();
-        $master_data_version = MasterDataVersion::all();
+        $pregnancy_history = RiwayatKehamilan::where("user_id", $user_id)->orderBy('hari_pertama_haid_terakhir', 'ASC')->get();
+        $current_pregnancy = RiwayatKehamilan::where("user_id", $user_id)->where('status', 'Hamil')->first();
+        if ($current_pregnancy) {
+            $pregnancy_log_history = RiwayatLogKehamilan::where("user_id", $user_id)
+                ->where("riwayat_kehamilan_id", $current_pregnancy->id)
+                ->first();
+    
+            $weight_gain_history = BeratIdealIbuHamil::where("user_id", $user_id)
+                ->where("riwayat_kehamilan_id", $current_pregnancy->id)
+                ->orderBy('minggu_kehamilan', 'ASC')
+                ->orderBy('tanggal_pencatatan', 'ASC')
+                ->get();
+        } else {
+            $pregnancy_log_history = null;
+            $weight_gain_history = collect([]);
+        }
 
         $data = [
             "user" => $user,
@@ -678,13 +611,22 @@ class MainController extends Controller
             "log_history" => $log_history,
             "pregnancy_log_history" => $pregnancy_log_history,
             "weight_gain_history" => $weight_gain_history,
-            "master_data_version" => $master_data_version,
         ];
 
         return response()->json([
             "status" => "success",
             "message" => __('response.getting_data'),
             "data" => $data
+        ], Response::HTTP_OK);
+    }
+
+    public function syncMasterData() {
+        $master_data_version = MasterDataVersion::all();
+
+        return response()->json([
+            "status" => "success",
+            "message" => __('response.getting_data'),
+            "data" => $master_data_version
         ], Response::HTTP_OK);
     }
 
@@ -756,4 +698,102 @@ class MainController extends Controller
                                 ->value('gender');
         return $predictedBabyGender;
     }
+
+    // public function filter(Request $request)
+    // {
+    //     # Input Validation
+    //     $validated = $request->validate([
+    //         'year' => 'required|date_format:Y|before_or_equal:' . now()->year
+    //     ]);
+
+    //     try {
+    //         # Get User Data (Current Year, User ID, User Age, User Lunar Age)
+    //         $current_year = $request->year;
+    //         $user = Login::where('token', $request->header('user_id'))->first();
+    //         $user_id = $user->id;
+    //         $age = Carbon::parse($user->tanggal_lahir)->age;
+    //         $lunar_age = $this->calculateLunarAge($age);
+    
+    //         # Get Period History (All Period History, Actual Period History, Predction Period History)
+    //         $period_history = RiwayatMens::where('user_id', $user_id)->whereYear('haid_awal', $current_year)->orderBy('haid_awal', 'DESC')->get();
+    //         $actual_period_history = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->whereYear('haid_awal', $current_year)->orderBy('haid_awal', 'DESC')->get();
+    //         $prediction_period_history = RiwayatMens::where('user_id', $user_id)->where('is_actual', '0')->whereYear('haid_awal', $current_year)->orderBy('haid_awal', 'DESC')->get();
+
+    //         if (count($actual_period_history) > 0) {
+    //             foreach ($actual_period_history as $data) {
+    //                 $start_date = Carbon::parse($data->haid_awal)->format('Y-m-d');
+    //                 $end_date = Carbon::parse($data->haid_akhir)->format('Y-m-d');
+                    
+    //                 if (count($actual_period_history) == 1) {
+    //                     $predicted_end_date = Carbon::parse($start_date)->addDays($data->lama_siklus ?? 0);
+    //                     $today = Carbon::now();
+
+    //                     if ($predicted_end_date->gte($today)) {
+    //                         $period_cycle = ($data->lama_siklus) ? $data->lama_siklus : Carbon::parse($start_date)->diffInDays(Carbon::now());
+    //                     } else {
+    //                         $period_cycle = Carbon::parse($start_date)->diffInDays($today);
+    //                     }
+    //                 } else {
+    //                     $period_cycle = ($data->lama_siklus) ? $data->lama_siklus : Carbon::parse($start_date)->diffInDays(Carbon::now());
+    //                 }
+
+    //                 $period_chart[] = [
+    //                     "id" => $data->id,
+    //                     "start_date" => $start_date,
+    //                     "end_date" => $end_date,
+    //                     "period_cycle" => $period_cycle,
+    //                     "period_duration" => $data->durasi_haid,
+    //                 ];
+    //             }
+    //         } else {
+    //             $period_chart[] = NULL;
+    //         }
+
+    //         # Get Period Data (Shortest Period, Longest Period, Shortest Cycle, Longest Cycle, Average Period Duration, Averatge Period Cycle)
+    //         $shortest_period = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->whereYear('haid_awal', $current_year)->orderBy('lama_siklus', 'ASC')->value('lama_siklus');
+    //         $longest_period = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->whereYear('haid_awal', $current_year)->orderBy('lama_siklus', 'DESC')->value('lama_siklus');
+    //         $shortest_cycle = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->whereYear('haid_awal', $current_year)->orderBy('durasi_haid', 'ASC')->value('lama_siklus');
+    //         $longest_cycle = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->whereYear('haid_awal', $current_year)->orderBy('durasi_haid', 'DESC')->value('lama_siklus');
+    //         $avg_period_duration = ceil(RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->whereYear('haid_awal', $current_year)->orderBy('haid_awal', 'DESC')->avg('durasi_haid'));
+    //         $avg_period_cycle = ceil(RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->whereYear('haid_awal', $current_year)->orderBy('haid_awal', 'DESC')->avg('lama_siklus'));
+            
+    //         $latest_period_history = RiwayatMens::where('user_id', $user_id)->where('is_actual', '1')->whereYear('haid_awal', $current_year)->orderBy('haid_awal', 'DESC')->first();
+
+    //         if ($latest_period_history && $latest_period_history['hari_terakhir_siklus'] === null) {
+    //             $haid_awal = Carbon::parse($latest_period_history['haid_awal']);
+    //             $today = Carbon::now();
+    //             $lama_siklus = $haid_awal->diffInDays($today);
+    //             $latest_period_history['lama_siklus'] = $lama_siklus;
+    //         }
+    
+    //         # Return Response
+    //         return response()->json([
+    //             "status" => "success",
+    //             "message" => __('response.getting_data'),
+    //             "data" => [
+    //                 "initial_year" => Carbon::parse(RiwayatMens::where('user_id', $user_id)->orderBy('haid_awal', 'ASC')->first()->haid_awal ?? '')->format('Y'),
+    //                 "latest_year" => Carbon::parse(RiwayatMens::where('user_id', $user_id)->orderBy('haid_awal', 'DESC')->first()->haid_awal ?? '')->format('Y'),
+    //                 "current_year" => $current_year,
+    //                 "age" => $age,
+    //                 "lunar_age" => $lunar_age,
+    //                 "shortest_period" => $shortest_period,
+    //                 "longest_period" => $longest_period,
+    //                 "shortest_cycle" => $shortest_cycle,
+    //                 "longest_cycle" => $longest_cycle,
+    //                 "avg_period_duration" => $avg_period_duration,
+    //                 "avg_period_cycle" => $avg_period_cycle,
+    //                 "period_chart" => $period_chart,
+    //                 "latest_period_history" => $latest_period_history,
+    //                 "period_history" => $period_history,
+    //                 "actual_period" => $actual_period_history,
+    //                 "prediction_period" => $prediction_period_history,
+    //             ]
+    //         ], Response::HTTP_OK);
+    //     } catch (\Throwable $th) {
+    //         return response()->json([
+    //             "status" => "failed",
+    //             "message" => "Failed to get data".' | '.$th->getMessage(),
+    //         ], Response::HTTP_INTERNAL_SERVER_ERROR);
+    //     }
+    // }
 }

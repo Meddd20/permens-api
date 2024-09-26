@@ -367,6 +367,7 @@ class AuthController extends Controller
             RiwayatMens::where('user_id', $user->id)->delete();
             BeratIdealIbuHamil::where('user_id', $user->id)->delete();
             RiwayatLogKehamilan::where('user_id', $user->id)->delete();
+            BeratIdealIbuHamil::where('user_id', $user->id)->delete();
             RiwayatKehamilan::where('user_id', $user->id)->delete();
             RiwayatLog::where('user_id', $user->id)->delete();
 

@@ -18,10 +18,8 @@ class LogKehamilanController extends Controller
 {
     public function addPregnancyLog(Request $request) {
         $pregnancySymptoms = [
-            "Aches and Pains","Abdominal Pressure","Abdominal Stretching","Baby Kicks","Back Pain","Backaches","Breast Enlargement","Breast Soreness","Breast Swelling","Breast Tenderness","Breathlessness","Carpal Tunnel Syndrome","Changes in Libido","Clumsiness","Constipation","Cervical Dilation","Decreased Libido","Darkening of Skin","Dizziness","Dry Eyes","Dry Mouth","Dry Skin","Easier Breathing","Excessive Salivation",
-            "Fast-Growing Hair and Nails","Fatigue","Food Aversions","Food Cravings","Frequent Headaches","Frequent Urination","General Discomfort","Gum Sensitivity","Hair Growth Changes","Heart Palpitations","Heartburn","Hip Pain","Hip, Groin, and Abdominal Pain","Hemorrhoids","Increased Appetite","Increased Saliva","Increased Thirst","Increased Urge to Push","Increased Vaginal Discharge","Insomnia","Itchiness in Hands and Feet",
-            "Leg Cramps","Leg Swelling","Leaky Breasts","Loose Ligaments","Loss of Mucus Plug","Lower Back Pain","Mood Swings","Nasal Congestion","Nausea and Vomiting","Numbness or Tingling","Pelvic Pain","Pelvic Pain as Baby Descends","Pelvic Pressure","Pregnancy Brain (Forgetfulness)","Pregnancy Glow","Round Ligament Pain","Skin Changes","Shortness of Breath","Spotting After Sex","Stuffy Nose","Stretch Marks","Swelling in Hands and Feet",
-            "Swollen Feet","Vivid Dreams","Varicose Veins","Water Breaking"
+            "Altered Body Image", "Anxiety", "Back Pain", "Breast Pain", "Brownish Marks on Face", "Carpal Tunnel", "Changes in Libido", "Changes in Nipples", "Constipation", "Dizziness", "Dry Mouth", "Fainting", "Feeling Depressed", "Food Cravings", "Forgetfulness", "Greasy Skin/Acne", "Haemorrhoids", "Headache", "Heart Palpitations", "Hip/Pelvic Pain", "Increased Vaginal Discharge", 
+            "Incontinence/Leaking Urine", "Itchy Skin", "Leg Cramps", "Nausea", "Painful Vaginal Veins", "Poor Sleep", "Reflux", "Restless Legs", "Shortness of Breath", "Sciatica", "Snoring", "Sore Nipples", "Stretch Marks", "Swollen Hands/Feet", "Taste/Smell Changes", "Thrush", "Tiredness/Fatigue", "Urinary Frequency", "Varicose Veins", "Vivid Dreams", "Vomiting" 
         ];
 
         $rules = [
@@ -210,10 +208,8 @@ class LogKehamilanController extends Controller
 
     public function pregnancyLogsByDate(Request $request) {
         $pregnancySymptoms = [
-            "Aches and Pains","Abdominal Pressure","Abdominal Stretching","Baby Kicks","Back Pain","Backaches","Breast Enlargement","Breast Soreness","Breast Swelling","Breast Tenderness","Breathlessness","Carpal Tunnel Syndrome","Changes in Libido","Clumsiness","Constipation","Cervical Dilation","Decreased Libido","Darkening of Skin","Dizziness","Dry Eyes","Dry Mouth","Dry Skin","Easier Breathing","Excessive Salivation",
-            "Fast-Growing Hair and Nails","Fatigue","Food Aversions","Food Cravings","Frequent Headaches","Frequent Urination","General Discomfort","Gum Sensitivity","Hair Growth Changes","Heart Palpitations","Heartburn","Hip Pain","Hip, Groin, and Abdominal Pain","Hemorrhoids","Increased Appetite","Increased Saliva","Increased Thirst","Increased Urge to Push","Increased Vaginal Discharge","Insomnia","Itchiness in Hands and Feet",
-            "Leg Cramps","Leg Swelling","Leaky Breasts","Loose Ligaments","Loss of Mucus Plug","Lower Back Pain","Mood Swings","Nasal Congestion","Nausea and Vomiting","Numbness or Tingling","Pelvic Pain","Pelvic Pain as Baby Descends","Pelvic Pressure","Pregnancy Brain (Forgetfulness)","Pregnancy Glow","Round Ligament Pain","Skin Changes","Shortness of Breath","Spotting After Sex","Stuffy Nose","Stretch Marks","Swelling in Hands and Feet",
-            "Swollen Feet","Vivid Dreams","Varicose Veins","Water Breaking"
+            "Altered Body Image", "Anxiety", "Back Pain", "Breast Pain", "Brownish Marks on Face", "Carpal Tunnel", "Changes in Libido", "Changes in Nipples", "Constipation", "Dizziness", "Dry Mouth", "Fainting", "Feeling Depressed", "Food Cravings", "Forgetfulness", "Greasy Skin/Acne", "Haemorrhoids", "Headache", "Heart Palpitations", "Hip/Pelvic Pain", "Increased Vaginal Discharge", 
+            "Incontinence/Leaking Urine", "Itchy Skin", "Leg Cramps", "Nausea", "Painful Vaginal Veins", "Poor Sleep", "Reflux", "Restless Legs", "Shortness of Breath", "Sciatica", "Snoring", "Sore Nipples", "Stretch Marks", "Swollen Hands/Feet", "Taste/Smell Changes", "Thrush", "Tiredness/Fatigue", "Urinary Frequency", "Varicose Veins", "Vivid Dreams", "Vomiting" 
         ];
 
         $request->validate([

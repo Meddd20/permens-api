@@ -262,12 +262,9 @@ class LogsController extends Controller
             if ($userData) {
                 $userDataArray = $userData->data_harian;
         
-                // Periksa apakah data dengan tanggal yang akan dihapus ada dalam array data pengguna
                 if (isset($userDataArray[$dateToDelete])) {
-                    // Hapus data dengan tanggal yang sesuai
                     unset($userDataArray[$dateToDelete]);
         
-                    // Update data pengguna di database
                     $userData->data_harian = $userDataArray;
                     $userData->save();
         

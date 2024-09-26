@@ -124,6 +124,10 @@ class PeriodController extends Controller
         try {
             DB::beginTransaction();
 
+            Login::where('id', $user_id)->update([
+                "is_pregnant" => '0'
+            ]);
+
             for ($i = 0; $i < $periodsCount; $i++) {
                 # Start & End Period from Input
                 $period_start = Carbon::parse($periods[$i]['first_period']);

@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Engine\NotificationController;
 use App\Models\Login;
 use App\Models\RiwayatKehamilan;
 use App\Models\RiwayatMens;

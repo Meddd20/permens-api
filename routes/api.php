@@ -32,22 +32,22 @@ Route::middleware("api_key")->group(function() {
         return 'Connection Successfully';
     });
     
-    Route::post('auth/login', [AuthController::class, 'login']);
-    Route::post('auth/logout', [AuthController::class, 'logout']);
-    Route::post('auth/register/user', [AuthController::class, 'registerUser']);
-    Route::post('auth/register/admin', [AuthController::class, 'registerAdmin']);
-    Route::post('auth/changepassword', [AuthController::class, 'changePassword']);
-    Route::post('auth/requestverification', [AuthController::class, 'requestVerificationCode'])
-    ->name('requestVerificationCode');
+    Route::post('login', [AuthController::class, 'login']);
+    Route::post('logout', [AuthController::class, 'logout']);
+    Route::post('register/user', [AuthController::class, 'registerUser']);
+    Route::post('register/admin', [AuthController::class, 'registerAdmin']);
+    Route::post('changepassword', [AuthController::class, 'changePassword']);
+    Route::post('requestverification', [AuthController::class, 'requestVerificationCode']);
     // ->middleware(['throttle:5,60']);
-    Route::post('auth/verifyverification', [AuthController::class, 'verifyVerificationCode']);
+    Route::post('verifyverification', [AuthController::class, 'verifyVerificationCode']);
     
-    Route::post('calc/instans', [QuickCalController::class, 'calc']);
+    // Route::post('calc/instans', [QuickCalController::class, 'calc']);
     Route::post('period/store-period', [PeriodController::class, 'storePeriod']);
     Route::post('pregnancy/begin', [PregnancyController::class, 'pregnancyBegin']);
     Route::get('articles/show-articles/{id}', [NewsController::class, 'showNews']);
     Route::get('articles/show-all-articles', [NewsController::class, 'showAllNews']);
 
+    Route::get('sync-master-data', [MainController::class, 'syncMasterData']);
     Route::get('master/get-food', [MasterFoodController::class, 'getAllFood']);
     Route::get('master/get-pregnancy', [MasterKehamilanController::class, 'getAllDataKehamilan']);
     Route::get('master/get-vaccines', [MasterVaccineController::class, 'getAllVaccineData']);
@@ -57,13 +57,19 @@ Route::middleware("api_key")->group(function() {
         Route::post('/send-notification', [NotificationController::class, 'send']);
         Route::post('/notifications/token', [NotificationController::class, 'store']);
 
+        Route::get('sync-data', [MainController::class, 'syncData']);
+        Route::post('check-token', [AuthController::class, 'checkToken']);
+        Route::get('get-profile', [AuthController::class, 'showProfile']);
+        Route::patch('update-profile', [AuthController::class, 'updateProfile']);
+        Route::delete('delete-data', [AuthController::class, 'truncateUserData']);
+        Route::delete('delete-account', [AuthController::class, 'deleteAccount']);
+
         Route::get('period/index', [MainController::class, 'index']);
-        Route::post('period/index/filter', [MainController::class, 'filter']);
         Route::post('period/date-event', [MainController::class, 'currentDateEvent']);
-        // Route::post('period/insight', [MainController::class, 'insight']);
-        
         Route::patch('period/update-period', [PeriodController::class, 'updatePeriod']);
-        Route::post('period/store-prediction', [PeriodController::class, 'storePrediction']);
+        // Route::post('period/insight', [MainController::class, 'insight']);
+        // Route::post('period/index/filter', [MainController::class, 'filter']);
+        // Route::post('period/store-prediction', [PeriodController::class, 'storePrediction']);
 
         Route::patch('daily-log/update-log', [LogsController::class, 'storeLog']);
         Route::delete('daily-log/delete-log', [LogsController::class, 'deleteLog']);
@@ -103,19 +109,12 @@ Route::middleware("api_key")->group(function() {
         Route::delete('pregnancy/delete-kicks-counter/{id}', [LogKehamilanController::class, 'deleteKicksCounter']);
         Route::get('pregnancy/get-kicks-counter', [LogKehamilanController::class, 'getAllKicksCounter']);
     
-        Route::get('auth/sync-data', [MainController::class, 'syncData']);
-        Route::get('auth/get-profile', [AuthController::class, 'showProfile']);
-        Route::post('auth/check-token', [AuthController::class, 'checkToken']);
-        Route::patch('auth/update-profile', [AuthController::class, 'updateProfile']);
-        Route::delete('auth/delete-data', [AuthController::class, 'truncateUserData']);
-        Route::delete('auth/delete-account', [AuthController::class, 'deleteAccount']);
-    
         Route::get('comments/{article_id}', [CommentController::class, 'showCommentsArticle']);
         Route::post('comments/create-comments', [CommentController::class, 'createComment']);
         Route::patch('comments/update-comments/{id}', [CommentController::class, 'updateComment']);
         Route::delete('comments/delete-comments/{id}', [CommentController::class, 'deleteComment']);
         Route::post('comments/like-comments', [CommentController::class, 'likeComment']);
-    }); 
+    });
     
     Route::middleware('validate_admin')->group(function () {
         Route::post('articles/create-articles', [NewsController::class, 'createNews']);
