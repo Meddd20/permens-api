@@ -70,12 +70,12 @@ class PeriodController extends Controller
             return strtotime($a['first_period']) - strtotime($b['first_period']);
         });
 
-        if ($request->header('user_id') == null) {
+        if ($request->header('userToken') == null) {
             $email_regis = $request->input('email_regis');
             $user = Login::where('email', $email_regis)->first();
             $user_id = $user->id;
         } else {
-            $user = Login::where('token', $request->header('user_id'))->first();
+            $user = Login::where('token', $request->header('userToken'))->first();
             $user_id = $user->id;
         }
         
@@ -320,7 +320,7 @@ class PeriodController extends Controller
             ], Response::HTTP_BAD_REQUEST);
         }
 
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
         
         $period_start = Carbon::parse($request->first_period);
@@ -621,7 +621,7 @@ class PeriodController extends Controller
     //         ], 400);
     //     }
 
-    //     $user_id = UToken::where('token', $request->header('user_id'))->value('user_id');
+    //     $user_id = UToken::where('token', $request->header('userToken'))->value('user_id');
 
     //     # Get User Age from User Birthday
     //     $user = Login::where('id', $user_id)->first();

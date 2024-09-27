@@ -22,12 +22,12 @@ class PregnancyController extends Controller
             'hari_pertama_haid_terakhir' => 'required|date_format:Y-m-d|before_or_equal:today'
         ]);
 
-        if ($request->header('user_id') == null) {
+        if ($request->header('userToken') == null) {
             $email_regis = $request->input('email_regis');
             $user = Login::where('email', $email_regis)->first();
             $user_id = $user->id;
         } else {
-            $user = Login::where('token', $request->header('user_id'))->first();
+            $user = Login::where('token', $request->header('userToken'))->first();
             $user_id = $user->id;
         }
 
@@ -102,7 +102,7 @@ class PregnancyController extends Controller
             'gender' => 'required|in:Boy,Girl'
         ]);
 
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
 
         $pregnancy = RiwayatKehamilan::where('user_id', $user_id)
@@ -146,7 +146,7 @@ class PregnancyController extends Controller
 
     public function deletePregnancy(Request $request)
     {
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
         $pregnancy = RiwayatKehamilan::where('user_id', $user_id)
                             ->where('status', "Hamil")
@@ -202,7 +202,7 @@ class PregnancyController extends Controller
             'is_twin' => 'nullable|integer|between:0,1',
         ]);
 
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
         $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
                     ->where('status', 'Hamil')
@@ -314,7 +314,7 @@ class PregnancyController extends Controller
             'tanggal_pencatatan' => 'required|date_format:Y-m-d',
         ]);
 
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
 
         $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
@@ -416,7 +416,7 @@ class PregnancyController extends Controller
             'tanggal_pencatatan' => 'required|date_format:Y-m-d',
         ]);
 
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
         $entry_to_delete = BeratIdealIbuHamil::where('user_id', $user_id)->where('tanggal_pencatatan', $request->tanggal_pencatatan)->first();
     
@@ -485,7 +485,7 @@ class PregnancyController extends Controller
 
     public function PregnancyWeightGainIndex(Request $request) {
         try {
-            $user = Login::where('token', $request->header('user_id'))->first();
+            $user = Login::where('token', $request->header('userToken'))->first();
             $user_id = $user->id;
             $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
                     ->where('status', 'Hamil')

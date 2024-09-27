@@ -214,7 +214,7 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $token = $request->header('user_id');
+        $token = $request->header('userToken');
 
         if (!$token) {
             return response()->json([
@@ -244,7 +244,7 @@ class AuthController extends Controller
 
     public function checkToken(Request $request) 
     {
-        $token = $request->header('user_id');
+        $token = $request->header('userToken');
 
         if (!$token) {
             return response()->json([
@@ -287,7 +287,7 @@ class AuthController extends Controller
             ], Response::HTTP_BAD_REQUEST);
         }
 
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
 
         try {
             DB::beginTransaction();
@@ -316,7 +316,7 @@ class AuthController extends Controller
     public function showProfile(Request $request)
     {
         try {
-            $user = Login::where('token', $request->header('user_id'))->first();
+            $user = Login::where('token', $request->header('userToken'))->first();
     
             return response()->json([
                 'status' => 'success',
@@ -333,7 +333,7 @@ class AuthController extends Controller
 
     public function deleteAccount(Request $request)
     {
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
 
         try {
             DB::beginTransaction();
@@ -359,7 +359,7 @@ class AuthController extends Controller
 
     public function truncateUserData(Request $request)
     {
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
 
         try {
             DB::beginTransaction();

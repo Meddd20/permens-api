@@ -10,7 +10,7 @@ class ValidateAdmin
 {
     public function handle($request, Closure $next)
     {
-        $token = $request->header('user_id');
+        $token = $request->header('userToken');
         if (!$token) {
             return response()->json([
                 'status' => 'failed',
@@ -18,7 +18,7 @@ class ValidateAdmin
             ], Response::HTTP_UNAUTHORIZED);
         }
 
-        $admin = Login::where('token', $request->header('user_id'))->first();
+        $admin = Login::where('token', $token)->first();
 
         if (!$admin) {
             return response()->json([

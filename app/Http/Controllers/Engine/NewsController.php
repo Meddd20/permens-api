@@ -55,7 +55,7 @@ class NewsController extends Controller
         }
 
         $tags = $request->input('tags');
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
 
         try {

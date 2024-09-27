@@ -10,7 +10,7 @@ class ValidateUser
 {
     public function handle($request, Closure $next)
     {
-        $token = $request->header('user_id');
+        $token = $request->header('userToken');
         if (!$token) {
             return response()->json([
                 'status' => 'failed',
@@ -18,7 +18,7 @@ class ValidateUser
             ], Response::HTTP_UNAUTHORIZED);
         }
 
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $token)->first();
 
         if (!$user) {
             return response()->json([

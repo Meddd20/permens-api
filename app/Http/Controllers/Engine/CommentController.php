@@ -34,7 +34,7 @@ class CommentController extends Controller
             ], Response::HTTP_BAD_REQUEST);
         }
 
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $parent_comment_user_id = null;
 
         if ($request->input('parent_id') != null) {
@@ -187,7 +187,7 @@ class CommentController extends Controller
                 ], Response::HTTP_BAD_REQUEST);
             }
 
-            $user = Login::where('token', $request->header('user_id'))->first();
+            $user = Login::where('token', $request->header('userToken'))->first();
             $userId = $user->id;
             $comment = Komentar::find($request->input('comment_id'));
             $commentId = $request->input('comment_id');

@@ -25,7 +25,7 @@ class MainController extends Controller
         try {
             # Get User Data (Current Year, User ID, User Age, User Lunar Age)
             $current_year = Carbon::now()->format('Y');
-            $user = Login::where('token', $request->header('user_id'))->first();
+            $user = Login::where('token', $request->header('userToken'))->first();
             $user_id = $user->id;
             $age = Carbon::parse($user->tanggal_lahir)->age;
             $lunar_age = $this->calculateLunarAge($age);
@@ -141,7 +141,7 @@ class MainController extends Controller
 
     public function pregnancyIndex(Request $request) {
         try {
-            $user = Login::where('token', $request->header('user_id'))->first();
+            $user = Login::where('token', $request->header('userToken'))->first();
             $user_id = $user->id;
             $lang = $request->header('lang');
 
@@ -265,7 +265,7 @@ class MainController extends Controller
             ], Response::HTTP_NOT_FOUND);
         }
 
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
         $periodHistory = RiwayatMens::where('user_id', $user_id)
             ->orderBy('haid_awal', 'asc')
@@ -583,7 +583,7 @@ class MainController extends Controller
     }
 
     public function syncData(Request $request) {
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
         $period_history = RiwayatMens::where("user_id", $user_id)->orderBy('haid_awal', 'ASC')->get();
         $log_history = RiwayatLog::where("user_id", $user_id)->first();
@@ -709,7 +709,7 @@ class MainController extends Controller
     //     try {
     //         # Get User Data (Current Year, User ID, User Age, User Lunar Age)
     //         $current_year = $request->year;
-    //         $user = Login::where('token', $request->header('user_id'))->first();
+    //         $user = Login::where('token', $request->header('userToken'))->first();
     //         $user_id = $user->id;
     //         $age = Carbon::parse($user->tanggal_lahir)->age;
     //         $lunar_age = $this->calculateLunarAge($age);

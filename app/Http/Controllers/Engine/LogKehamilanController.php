@@ -69,7 +69,7 @@ class LogKehamilanController extends Controller
             ], Response::HTTP_BAD_REQUEST);
         }
 
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
         $date = $request->date;
 
@@ -151,7 +151,7 @@ class LogKehamilanController extends Controller
             ], Response::HTTP_BAD_REQUEST);
         }
 
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
         $date = $request->date;
 
@@ -216,7 +216,7 @@ class LogKehamilanController extends Controller
             'date' => 'required|date|before_or_equal:' . now()
         ]);
 
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
 
         $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)->where('status', 'Hamil')->first();
@@ -266,7 +266,7 @@ class LogKehamilanController extends Controller
                 'message' => $validator->errors()->first()
             ], Response::HTTP_BAD_REQUEST);
         }
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
 
         $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)->where('status', 'Hamil')->first();
@@ -378,7 +378,7 @@ class LogKehamilanController extends Controller
         }
 
         $preMadeReminderId = $request->id;
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
         $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)->where('status', 'Hamil')->first();
         if ($current_pregnancy == null) {
@@ -453,7 +453,7 @@ class LogKehamilanController extends Controller
             ], Response::HTTP_BAD_REQUEST);
         }
 
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
         $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)->where('status', 'Hamil')->first();
         if ($current_pregnancy == null) {
@@ -511,7 +511,7 @@ class LogKehamilanController extends Controller
     }
 
     public function deleteBloodPressure(Request $request, $id) {
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
         $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)->where('status', 'Hamil')->first();
         if ($current_pregnancy == null) {
@@ -565,7 +565,7 @@ class LogKehamilanController extends Controller
     }
 
     public function getAllBloodPressure(Request $request) {
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
         $pregnancy_log = RiwayatLogKehamilan::where('user_id', $user_id)->first();
         if (!$pregnancy_log) {
@@ -609,7 +609,7 @@ class LogKehamilanController extends Controller
         }
 
         $preMadeReminderId = $request->id;
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
         $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)->where('status', 'Hamil')->first();
         if ($current_pregnancy == null) {
@@ -686,7 +686,7 @@ class LogKehamilanController extends Controller
     }
 
     public function deleteContractionTimer(Request $request, $id) {
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
         $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)->where('status', 'Hamil')->first();
         if ($current_pregnancy == null) {
@@ -761,7 +761,7 @@ class LogKehamilanController extends Controller
     }
 
     public function getAllContractionTimer(Request $request) {
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
         $pregnancy_log = RiwayatLogKehamilan::where('user_id', $user_id)->first();
         if (!$pregnancy_log) {
@@ -803,7 +803,7 @@ class LogKehamilanController extends Controller
         }
 
         $preMadeReminderId = $request->id;
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
         $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)->where('status', 'Hamil')->first();
         if ($current_pregnancy == null) {
@@ -923,7 +923,7 @@ class LogKehamilanController extends Controller
             ], Response::HTTP_BAD_REQUEST);
         }
     
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
         $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)->where('status', 'Hamil')->first();
         if ($current_pregnancy == null) {
@@ -978,7 +978,7 @@ class LogKehamilanController extends Controller
     
 
     public function deleteKicksCounter(Request $request, $id) {
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
         $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)->where('status', 'Hamil')->first();
         if ($current_pregnancy == null) {
@@ -1031,7 +1031,7 @@ class LogKehamilanController extends Controller
     }
 
     public function getAllKicksCounter(Request $request) {
-        $user = Login::where('token', $request->header('user_id'))->first();
+        $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
         $pregnancy_log = RiwayatLogKehamilan::where('user_id', $user_id)->first();
         if (!$pregnancy_log) {

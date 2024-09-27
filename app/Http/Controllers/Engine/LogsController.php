@@ -163,7 +163,7 @@ class LogsController extends Controller
         try {
             DB::beginTransaction();
         
-            $user = Login::where('token', $request->header('user_id'))->first();
+            $user = Login::where('token', $request->header('userToken'))->first();
             $user_id = $user->id;
             $dateToCheck = $request->input('date');
         
@@ -253,7 +253,7 @@ class LogsController extends Controller
         }
 
         try {
-            $user = Login::where('token', $request->header('user_id'))->first();
+            $user = Login::where('token', $request->header('userToken'))->first();
             $user_id = $user->id;
             $dateToDelete = $request->date;
         
@@ -304,7 +304,7 @@ class LogsController extends Controller
         ]);
 
         try {
-            $user = Login::where('token', $request->header('user_id'))->first();
+            $user = Login::where('token', $request->header('userToken'))->first();
             $user_id = $user->id;
             $userData = RiwayatLog::where('user_id', $user_id)->first();
         
@@ -374,7 +374,7 @@ class LogsController extends Controller
                 ], Response::HTTP_BAD_REQUEST);
             }
 
-            $user = Login::where('token', $request->header('user_id'))->first();
+            $user = Login::where('token', $request->header('userToken'))->first();
             $user_id = $user->id;
             $userData = RiwayatLog::where('user_id', $user_id)->first();
 
@@ -488,7 +488,7 @@ class LogsController extends Controller
         try {
             DB::beginTransaction();
         
-            $user = Login::where('token', $request->header('user_id'))->first();
+            $user = Login::where('token', $request->header('userToken'))->first();
             $user_id = $user->id;
             $userData = RiwayatLog::where('user_id', $user_id)->first();
 
@@ -554,7 +554,7 @@ class LogsController extends Controller
         try {
             DB::beginTransaction();
         
-            $user = Login::where('token', $request->header('user_id'))->first();
+            $user = Login::where('token', $request->header('userToken'))->first();
             $user_id = $user->id;
             $userData = RiwayatLog::where('user_id', $user_id)->first();
             
@@ -610,7 +610,7 @@ class LogsController extends Controller
         try {
             DB::beginTransaction();
     
-            $user = Login::where('token', $request->header('user_id'))->first();
+            $user = Login::where('token', $request->header('userToken'))->first();
             $user_id = $user->id;
             $userData = RiwayatLog::where('user_id', $user_id)->first();
     
@@ -663,7 +663,7 @@ class LogsController extends Controller
         try {
             DB::beginTransaction();
     
-            $user = Login::where('token', $request->header('user_id'))->first();
+            $user = Login::where('token', $request->header('userToken'))->first();
             $user_id = $user->id;
             $userData = RiwayatLog::where('user_id', $user_id)->first();
     
