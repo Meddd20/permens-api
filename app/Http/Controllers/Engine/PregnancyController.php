@@ -148,17 +148,32 @@ class PregnancyController extends Controller
     {
         $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
-        $pregnancy = RiwayatKehamilan::where('user_id', $user_id)
-                            ->where('status', "Hamil")
-                            ->first();
+        
+        if ($request->pregnancy_id != null) {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('id', $request->pregnancy_id)
+                    ->first();
+        } else {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('status', 'Hamil')
+                    ->first();
+        }
+
+        if (!$current_pregnancy) {
+            return response()->json([
+                'status' => 'error',
+                'message' => __('response.pregnancy_not_found'),
+            ], Response::HTTP_NOT_FOUND);
+        }
+
         $weight_history = BeratIdealIbuHamil::where('user_id', $user_id)
-                            ->where('riwayat_kehamilan_id', $pregnancy->id)
+                            ->where('riwayat_kehamilan_id', $current_pregnancy->id)
                             ->get();
         $pregnancy_log = RiwayatLogKehamilan::where('user_id', $user_id)
-                            ->where('riwayat_kehamilan_id', $pregnancy->id)
+                            ->where('riwayat_kehamilan_id', $current_pregnancy->id)
                             ->first();  
 
-        if (!$pregnancy) {
+        if (!$current_pregnancy) {
             return response()->json([
                 'status' => 'failed',
                 'message' => __('response.pregnancy_not_found')
@@ -177,7 +192,7 @@ class PregnancyController extends Controller
                 }
                 
                 $pregnancy_log->delete();
-                $pregnancy->delete();
+                $current_pregnancy->delete();
             DB::commit();
 
             return response()->json([
@@ -194,12 +209,87 @@ class PregnancyController extends Controller
         }
     }
 
+    public function updatePregnancy(Request $request)
+    {
+        $validated = $request->validate([
+            'is_pregnant' => 'required|integer|in:0,1,2',
+            'status' => 'required|in:Hamil,Melahirkan',
+            'hari_pertama_haid_terakhir' => 'required|before_or_equal:today',
+            'tanggal_perkiraan_lahir' => 'required',
+            'kehamilan_akhir' => 'nullable',
+            'tinggi_badan' => 'nullable|numeric|between:50,250',
+            'berat_prakehamilan' => 'nullable|numeric|between:30,200',
+            'bmi_prakehamilan' => 'nullable|numeric',
+            'kategori_bmi' => 'nullable|in:underweight,normal,obese,overweight',
+            'gender' => 'nullable|in:Boy,Girl',
+            'is_twin' => 'nullable|integer|in:0,1',
+        ]);
+
+        $user = Login::where('token', $request->header('userToken'))->first();
+        $user_id = $user->id;
+        $hari_pertama_haid_terakhir = Carbon::parse($request->hari_pertama_haid_terakhir)->format('Y-m-d');
+
+        $pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                        ->where('hari_pertama_haid_terakhir', $hari_pertama_haid_terakhir)
+                        ->first();
+        
+        if ($pregnancy == null) {
+            $pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                ->where('status', 'Hamil')
+                ->first();
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $pregnancyData = [
+                "user_id" => $user_id,
+                "status" => $request->status,
+                "hari_pertama_haid_terakhir" => $hari_pertama_haid_terakhir,
+                "tanggal_perkiraan_lahir" => Carbon::parse($request->tanggal_perkiraan_lahir)->format('Y-m-d'),
+                "tinggi_badan" => $request->tinggi_badan,
+                "berat_prakehamilan" => $request->berat_prakehamilan,
+                "bmi_prakehamilan" => $request->bmi_prakehamilan,
+                "kategori_bmi" => $request->kategori_bmi,
+                "gender" => $request->gender,
+                "is_twin" => $request->is_twin,
+            ];
+    
+            if ($request->has('kehamilan_akhir')) {
+                $pregnancyData['kehamilan_akhir'] = Carbon::parse($request->kehamilan_akhir)->format('Y-m-d');
+            }
+    
+            if (!$pregnancy) {
+                $pregnancy = RiwayatKehamilan::create($pregnancyData);
+            } else {
+                $pregnancy->update($pregnancyData);
+            }
+
+            Login::where('id', $user_id)->update([
+                "is_pregnant" => $request->is_pregnant
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                "status" => "success",
+                "message" => __('response.saving_success')
+            ], Response::HTTP_OK);
+        } catch (\Throwable $th) {
+            DB::rollback();
+            return response()->json([
+                "status" => "failed",
+                "message" => __('response.saving_failed') . ' | ' . $th->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     public function initWeightPregnancyTracking(Request $request) {
         # Input Validation
         $validated = $request->validate([
             'tinggi_badan' => 'required|numeric|between:50,250',
             'berat_badan' => 'required|numeric|between:30,200',
-            'is_twin' => 'nullable|integer|between:0,1',
+            'is_twin' => 'nullable|integer|in:0,1',
         ]);
 
         $user = Login::where('token', $request->header('userToken'))->first();
@@ -317,9 +407,15 @@ class PregnancyController extends Controller
         $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
 
-        $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+        if ($request->first_date_last_period != null) {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('hari_pertama_haid_terakhir', $request->first_date_last_period)
+                    ->first();
+        } else {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
                     ->where('status', 'Hamil')
                     ->first();
+        }
 
         if (!$current_pregnancy) {
             return response()->json([
@@ -331,23 +427,25 @@ class PregnancyController extends Controller
         $first_day_last_period = Carbon::parse($current_pregnancy->hari_pertama_haid_terakhir);
         $estimated_due_date = Carbon::parse($current_pregnancy->tanggal_perkiraan_lahir);
         $tanggal_pencatatan = Carbon::parse($request->tanggal_pencatatan);
+
+        $weight_entry_history = BeratIdealIbuHamil::where('user_id', $user_id)
+                    ->where('riwayat_kehamilan_id', $current_pregnancy->id)
+                    ->orderBy('minggu_kehamilan', 'asc')
+                    ->orderBy('tanggal_pencatatan', 'asc')
+                    ->get();
         
-        if ($tanggal_pencatatan->lessThan($first_day_last_period) || $tanggal_pencatatan->greaterThan($estimated_due_date)) {
-            return response()->json([
-                'status' => 'error',
-                'message' => __('response.tanggal_pencatatan_not_in_range_of_pregnancy'),
-            ], Response::HTTP_BAD_REQUEST);
+        if ($weight_entry_history->count() > 0 || $request->minggu_kehamilan != 0) {
+            if ($tanggal_pencatatan->lessThan($first_day_last_period) || $tanggal_pencatatan->greaterThan($estimated_due_date)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => __('response.tanggal_pencatatan_not_in_range_of_pregnancy'),
+                ], Response::HTTP_BAD_REQUEST);
+            }
         }
 
         # Return Response
         try {
             DB::beginTransaction();
-                $weight_entry_history = BeratIdealIbuHamil::where('user_id', $user_id)
-                    ->where('riwayat_kehamilan_id', $current_pregnancy->id)
-                    ->orderBy('minggu_kehamilan', 'asc')
-                    ->orderBy('tanggal_pencatatan', 'asc')
-                    ->get();
-
                 $existing_entry = $weight_entry_history->where('tanggal_pencatatan', $request->tanggal_pencatatan)->first();
 
                 if ($existing_entry) {
@@ -418,7 +516,28 @@ class PregnancyController extends Controller
 
         $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
-        $entry_to_delete = BeratIdealIbuHamil::where('user_id', $user_id)->where('tanggal_pencatatan', $request->tanggal_pencatatan)->first();
+
+        if ($request->first_date_last_period != null) {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('hari_pertama_haid_terakhir', $request->first_date_last_period)
+                    ->first();
+        } else {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('status', 'Hamil')
+                    ->first();
+        }
+
+        if (!$current_pregnancy) {
+            return response()->json([
+                'status' => 'error',
+                'message' => __('response.pregnancy_not_found'),
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $entry_to_delete = BeratIdealIbuHamil::where('user_id', $user_id)
+                ->where('riwayat_kehamilan_id', $current_pregnancy->id)
+                ->where('tanggal_pencatatan', $request->tanggal_pencatatan)
+                ->first();
     
         if (!$entry_to_delete) {
             return response()->json([
@@ -428,6 +547,7 @@ class PregnancyController extends Controller
         }
 
         $weight = BeratIdealIbuHamil::where('user_id', $user_id)
+                ->where('riwayat_kehamilan_id', $current_pregnancy->id)
                 ->orderBy('minggu_kehamilan', 'asc')
                 ->orderBy('tanggal_pencatatan', 'asc')
                 ->get();

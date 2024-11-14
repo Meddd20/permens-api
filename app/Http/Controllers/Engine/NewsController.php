@@ -96,7 +96,6 @@ class NewsController extends Controller
                 "message" => $th->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         };
-
     }
 
     public function updateNews(Request $request, $id) {

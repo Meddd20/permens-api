@@ -544,19 +544,24 @@ class PeriodController extends Controller
                 ->where('haid_awal', '<', $period_start)
                 ->get();
 
-            $avg_period_duration = ceil(($period_history->sum('durasi_haid')) / ($period_history->count()));
-            $avg_period_cycle = ceil(
-                RiwayatMens::where('user_id', $user_id)
-                    ->where('is_actual', '1')
-                    ->whereNotNull('lama_siklus')
-                    ->where('haid_awal', '<', $period_start)
-                    ->sum('lama_siklus') /
-                RiwayatMens::where('user_id', $user_id)
-                    ->where('is_actual', '1')
-                    ->whereNotNull('lama_siklus')
-                    ->where('haid_awal', '<', $period_start)
-                    ->count()
-            );
+            $period_cycles = $period_history->whereNotNull('lama_siklus');
+
+            $cycle_count = $period_cycles->count();
+            $history_count = $period_history->count();
+            
+            if ($cycle_count > 0) {
+                $avg_period_cycle = ceil(
+                    $period_cycles->sum('lama_siklus') / $cycle_count
+                );
+            } else {
+                $avg_period_cycle = 28;
+            }
+
+            if ($history_count > 0) {
+                $avg_period_duration = ceil(($period_history->sum('durasi_haid')) / $history_count);
+            } else {
+                $avg_period_duration = 8;
+            }
 
             $period_end = Carbon::parse($period_start)->addDays($avg_period_duration)->toDateString();
 

@@ -16,6 +16,7 @@ use App\Models\Verifikasi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
@@ -29,23 +30,27 @@ class AuthController extends Controller
         # Input Validation
         $rules = [
             "name" => "required|regex:/^[a-z ,.'-]+$/i|min:2|max:100",
-            "birthday" => "required|date",
-            'email' => [
-                'required',
-                'email:dns',
-                Rule::unique('tb_user', 'email')->where(function ($query) {
-                    $query->where('status', 'Verified');
-                }),
-                'max:190',
+            "birthday" => [
+                "required",
+                "date",
+                "before:" . now()->subYears(13)->format("Y-m-d"),
             ],
-            'password' => "required|min:8"
+            "email" => [
+                "required",
+                "email:dns",
+                Rule::unique("tb_user", "email")->where(function ($query) {
+                    $query->where("status", "Verified");
+                }),
+                "max:190",
+            ],
+            "password" => "required|min:8"
         ];  
         $messages = [];
         $attributes = [
-            'name' => __('attribute.name'),
-            'birthday' => __('attribute.birthday'),
-            'email' => __('attribute.email'),
-            'password' => __('attribute.password')
+            "name" => __("attribute.name"),
+            "birthday" => __("attribute.birthday"),
+            "email" => __("attribute.email"),
+            "password" => __("attribute.password")
         ];
         $validator = Validator::make($request->all(), $rules, $messages, $attributes);
         if ($validator->fails()) {
@@ -186,7 +191,7 @@ class AuthController extends Controller
 
                 $user = auth()->guard()->user();
                 $token = Str::random(30);
-
+                
                 $user->token = $token;
                 $user->save();
                     
@@ -272,7 +277,12 @@ class AuthController extends Controller
     {
         $rules = [
             'name' => 'required|regex:/^[a-z ,.\'-]+$/i|min:2|max:100',
-            'birthday' => 'required|date',
+            "birthday" => [
+                "required",
+                "date",
+                "before:" . now()->subYears(13)->format("Y-m-d"),
+            ],
+            'isPregnant' => 'nullable|in:0,1,2',
         ];
         $messages = [];
         $attributes = [
@@ -292,10 +302,16 @@ class AuthController extends Controller
         try {
             DB::beginTransaction();
     
-            $user->update([
+            $updateData = [
                 'nama' => $request->input('name'),
                 'tanggal_lahir' => $request->input('birthday'),
-            ]);
+            ];
+    
+            if ($request->has('isPregnant')) {
+                $updateData['isPregnant'] = $request->input('isPregnant');
+            }
+            
+            $user->update($updateData);
             
             DB::commit();
     
@@ -360,16 +376,15 @@ class AuthController extends Controller
     public function truncateUserData(Request $request)
     {
         $user = Login::where('token', $request->header('userToken'))->first();
-
+        $user_id = $user->id;
         try {
             DB::beginTransaction();
 
-            RiwayatMens::where('user_id', $user->id)->delete();
-            BeratIdealIbuHamil::where('user_id', $user->id)->delete();
-            RiwayatLogKehamilan::where('user_id', $user->id)->delete();
-            BeratIdealIbuHamil::where('user_id', $user->id)->delete();
-            RiwayatKehamilan::where('user_id', $user->id)->delete();
-            RiwayatLog::where('user_id', $user->id)->delete();
+            RiwayatMens::where('user_id', $user_id)->delete();
+            BeratIdealIbuHamil::where('user_id', $user_id)->delete();
+            RiwayatLogKehamilan::where('user_id', $user_id)->delete();
+            RiwayatKehamilan::where('user_id', $user_id)->delete();
+            RiwayatLog::where('user_id', $user_id)->delete();
 
             DB::commit();
 
@@ -504,7 +519,7 @@ class AuthController extends Controller
         $userType = $role == 'Admin' ? 'admin' : 'user';
         $content = "Kode verifikasi email untuk " . $jenis . " " . $userType . " adalah " . $kode . ". Berlaku sampai " . Carbon::parse($kadaluarsa)->format('H:i / d-m-Y');
         
-        try {
+        // try {
             Mail::raw($content, function ($message) use ($request) {
                 $message->to($request->email)
                         ->subject('Kalender Menstruasi dan Kehamilan by Medhiko - Kode Verifikasi Email');
@@ -515,12 +530,12 @@ class AuthController extends Controller
                 'message' => __('response.verification_email_success'),
                 'data' => $data
             ], Response::HTTP_OK);
-        } catch (\Throwable $th) {
-            return response()->json([
-                "status" => "failed",
-                "message" => __('response.verification_email_failed'),
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
+        // } catch (\Throwable $th) {
+        //     return response()->json([
+        //         "status" => "failed",
+        //         "message" => __('response.verification_email_failed'),
+        //     ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        // }
     }
 
     public function verifyVerificationCode(Request $request) {

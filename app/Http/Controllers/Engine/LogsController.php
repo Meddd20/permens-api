@@ -470,7 +470,7 @@ class LogsController extends Controller
             "id" => "nullable|string",
             "title" => "required|string",
             "description" => "nullable|string",
-            "datetime" => "required|date_format:Y-m-d H:i|after_or_equal:" . now(),
+            "datetime" => "required|date_format:Y-m-d H:i",
         ];
         $messages = [];
         $attributes = [
@@ -494,7 +494,6 @@ class LogsController extends Controller
 
             $preMadeReminderId = $request->id;
         
-            // Generate unique IDs for each reminder
             $newReminders = [
                 "id" => $preMadeReminderId == null ? Str::uuid() : $preMadeReminderId,
                 "title" => $request->title,
@@ -503,12 +502,10 @@ class LogsController extends Controller
             ];
         
             if ($userData) {
-                // User data exists, update the existing data with new reminders
                 $userDataReminders = $userData->pengingat ?? [];
                 $userData->pengingat = array_merge($userDataReminders, [$newReminders]);
                 $userData->save();
             } else {
-                // User data doesn't exist, create a new record with the new reminders
                 $userData = new RiwayatLog();
                 $userData->user_id = $user_id;
                 $userData->pengingat = [$newReminders];
@@ -535,7 +532,7 @@ class LogsController extends Controller
         $rules = [
             "title" => "required|string",
             "description" => "nullable|string",
-            "datetime" => "required|date_format:Y-m-d H:i|after_or_equal:" . now(),
+            "datetime" => "required|date_format:Y-m-d H:i",
         ];
         $messages = [];
         $attributes = [
@@ -565,7 +562,6 @@ class LogsController extends Controller
                 ], Response::HTTP_NOT_FOUND);
             }
     
-            // Cari pengingat berdasarkan ID
             $reminderToUpdate = collect($userData->pengingat)->where('id', $id)->first();
     
             if (!$reminderToUpdate) {
@@ -575,20 +571,15 @@ class LogsController extends Controller
                 ], Response::HTTP_NOT_FOUND);
             }
     
-            // Update data pengingat
             $reminderToUpdate['title'] = $request->title;
             $reminderToUpdate['description'] = $request->description;
             $reminderToUpdate['datetime'] = $request->datetime;
     
-            // Simpan perubahan kembali ke dalam array pengingat
             $updatedReminders = collect($userData->pengingat)->map(function ($reminder) use ($reminderToUpdate) {
                 return $reminder['id'] == $reminderToUpdate['id'] ? $reminderToUpdate : $reminder;
             })->toArray();
 
-            // Simpan array pengingat yang telah diperbarui
             $userData->pengingat = $updatedReminders;
-
-            // Simpan perubahan ke dalam database
             $userData->save();
         
             DB::commit();

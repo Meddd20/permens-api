@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,14 +23,20 @@ class LogKehamilanController extends Controller
             "Incontinence/Leaking Urine", "Itchy Skin", "Leg Cramps", "Nausea", "Painful Vaginal Veins", "Poor Sleep", "Reflux", "Restless Legs", "Shortness of Breath", "Sciatica", "Snoring", "Sore Nipples", "Stretch Marks", "Swollen Hands/Feet", "Taste/Smell Changes", "Thrush", "Tiredness/Fatigue", "Urinary Frequency", "Varicose Veins", "Vivid Dreams", "Vomiting" 
         ];
 
+        $pregnancySymptomsParam = $request->input('pregnancy_symptoms');
+
+        if (!$pregnancySymptomsParam) {
+            $pregnancySymptomsParam = $request->getContent();
+        }
+
         $rules = [
             "date" => "required|date|before:now",
             "pregnancy_symptoms" => [
                 "required",
                 "json",
-                function ($attribute, $value, $fail) use ($pregnancySymptoms) {
-                    $decodedValue = json_decode($value, true);
-
+                function ($attribute, $value, $fail) use ($pregnancySymptoms, $pregnancySymptomsParam) {
+                    $decodedValue = json_decode($pregnancySymptomsParam, true);  // Use the assigned value
+        
                     if ($decodedValue === null) {
                         $fail("The $attribute format is invalid. JSON decoding failed.");
                         return;
@@ -52,7 +59,7 @@ class LogKehamilanController extends Controller
             ],
             "temperature" => "nullable|regex:/^\d+(\.\d{1,2})?$/",
             "notes" => "nullable|string"
-        ];
+        ];        
         $messages = [];
         $attributes = [
             "date" => __('attribute.date'),
@@ -73,12 +80,21 @@ class LogKehamilanController extends Controller
         $user_id = $user->id;
         $date = $request->date;
 
-        $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)->where('status', 'Hamil')->first();
-        if ($current_pregnancy == null) {
+        if ($request->first_date_last_period != null) {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('hari_pertama_haid_terakhir', $request->first_date_last_period)
+                    ->first();
+        } else {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('status', 'Hamil')
+                    ->first();
+        }
+
+        if (!$current_pregnancy) {
             return response()->json([
                 'status' => 'error',
-                'message' => __('message.not_pregnant')
-            ], Response::HTTP_BAD_REQUEST);
+                'message' => __('response.pregnancy_not_found'),
+            ], Response::HTTP_NOT_FOUND);
         }
 
         $current_pregnancy_log = RiwayatLogKehamilan::where('user_id', $user_id)->where('riwayat_kehamilan_id', $current_pregnancy->id)->first();
@@ -155,12 +171,21 @@ class LogKehamilanController extends Controller
         $user_id = $user->id;
         $date = $request->date;
 
-        $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)->where('status', 'Hamil')->first();
-        if ($current_pregnancy == null) {
+        if ($request->first_date_last_period != null) {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('hari_pertama_haid_terakhir', $request->first_date_last_period)
+                    ->first();
+        } else {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('status', 'Hamil')
+                    ->first();
+        }
+
+        if (!$current_pregnancy) {
             return response()->json([
                 'status' => 'error',
-                'message' => __('message.not_pregnant')
-            ], Response::HTTP_BAD_REQUEST);
+                'message' => __('response.pregnancy_not_found'),
+            ], Response::HTTP_NOT_FOUND);
         }
 
         $current_pregnancy_log = RiwayatLogKehamilan::where('user_id', $user_id)->where('riwayat_kehamilan_id', $current_pregnancy->id)->first();
@@ -380,13 +405,24 @@ class LogKehamilanController extends Controller
         $preMadeReminderId = $request->id;
         $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
-        $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)->where('status', 'Hamil')->first();
-        if ($current_pregnancy == null) {
+
+        if ($request->first_date_last_period != null) {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('hari_pertama_haid_terakhir', $request->first_date_last_period)
+                    ->first();
+        } else {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('status', 'Hamil')
+                    ->first();
+        }
+
+        if (!$current_pregnancy) {
             return response()->json([
                 'status' => 'error',
-                'message' => __('message.not_pregnant')
-            ], Response::HTTP_BAD_REQUEST);
+                'message' => __('response.pregnancy_not_found'),
+            ], Response::HTTP_NOT_FOUND);
         }
+
         $pregnancy_age = Carbon::parse($request->datetime)->diffInWeeks($current_pregnancy->hari_pertama_haid_terakhir) + 1;
         $pregnancy_log = RiwayatLogKehamilan::where('user_id', $user_id)->where('riwayat_kehamilan_id', $current_pregnancy->id)->first();
 
@@ -395,7 +431,7 @@ class LogKehamilanController extends Controller
             "tekanan_sistolik" => $request->tekanan_sistolik,
             "tekanan_diastolik" => $request->tekanan_diastolik,
             "detak_jantung" => $request->detak_jantung,
-            "minggu_kehamilan" => $pregnancy_age,
+            "minggu_kehamilan" => $pregnancy_age, //perlu ga ini?
             "datetime" => $request->datetime,
         ];
 
@@ -455,13 +491,24 @@ class LogKehamilanController extends Controller
 
         $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
-        $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)->where('status', 'Hamil')->first();
-        if ($current_pregnancy == null) {
+
+        if ($request->first_date_last_period != null) {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('hari_pertama_haid_terakhir', $request->first_date_last_period)
+                    ->first();
+        } else {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('status', 'Hamil')
+                    ->first();
+        }
+
+        if (!$current_pregnancy) {
             return response()->json([
                 'status' => 'error',
-                'message' => __('message.not_pregnant')
-            ], Response::HTTP_BAD_REQUEST);
+                'message' => __('response.pregnancy_not_found'),
+            ], Response::HTTP_NOT_FOUND);
         }
+
         $pregnancy_age = Carbon::parse($request->datetime)->diffInWeeks($current_pregnancy->hari_pertama_haid_terakhir) + 1;
         $pregnancy_log = RiwayatLogKehamilan::where('user_id', $user_id)->where('riwayat_kehamilan_id', $current_pregnancy->id)->first();
         if (!$pregnancy_log) {
@@ -513,12 +560,22 @@ class LogKehamilanController extends Controller
     public function deleteBloodPressure(Request $request, $id) {
         $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
-        $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)->where('status', 'Hamil')->first();
-        if ($current_pregnancy == null) {
+
+        if ($request->first_date_last_period != null) {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('hari_pertama_haid_terakhir', $request->first_date_last_period)
+                    ->first();
+        } else {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('status', 'Hamil')
+                    ->first();
+        }
+
+        if (!$current_pregnancy) {
             return response()->json([
                 'status' => 'error',
-                'message' => __('message.not_pregnant')
-            ], Response::HTTP_BAD_REQUEST);
+                'message' => __('response.pregnancy_not_found'),
+            ], Response::HTTP_NOT_FOUND);
         }
 
         $pregnancy_log = RiwayatLogKehamilan::where('user_id', $user_id)->where('riwayat_kehamilan_id', $current_pregnancy->id)->first();
@@ -611,13 +668,24 @@ class LogKehamilanController extends Controller
         $preMadeReminderId = $request->id;
         $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
-        $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)->where('status', 'Hamil')->first();
-        if ($current_pregnancy == null) {
+        
+        if ($request->first_date_last_period != null) {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('hari_pertama_haid_terakhir', $request->first_date_last_period)
+                    ->first();
+        } else {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('status', 'Hamil')
+                    ->first();
+        }
+
+        if (!$current_pregnancy) {
             return response()->json([
                 'status' => 'error',
-                'message' => __('message.not_pregnant')
-            ], Response::HTTP_BAD_REQUEST);
+                'message' => __('response.pregnancy_not_found'),
+            ], Response::HTTP_NOT_FOUND);
         }
+
         $pregnancy_log = RiwayatLogKehamilan::where('user_id', $user_id)->where('riwayat_kehamilan_id', $current_pregnancy->id)->first();
         $waktuMulai = $request->waktu_mulai;
 
@@ -688,13 +756,24 @@ class LogKehamilanController extends Controller
     public function deleteContractionTimer(Request $request, $id) {
         $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
-        $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)->where('status', 'Hamil')->first();
-        if ($current_pregnancy == null) {
+        
+        if ($request->first_date_last_period != null) {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('hari_pertama_haid_terakhir', $request->first_date_last_period)
+                    ->first();
+        } else {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('status', 'Hamil')
+                    ->first();
+        }
+
+        if (!$current_pregnancy) {
             return response()->json([
                 'status' => 'error',
-                'message' => __('message.not_pregnant')
-            ], Response::HTTP_BAD_REQUEST);
+                'message' => __('response.pregnancy_not_found'),
+            ], Response::HTTP_NOT_FOUND);
         }
+
         $pregnancy_log = RiwayatLogKehamilan::where('user_id', $user_id)->where('riwayat_kehamilan_id', $current_pregnancy->id)->first();
         if (!$pregnancy_log) {
             return response()->json([
@@ -925,12 +1004,22 @@ class LogKehamilanController extends Controller
     
         $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
-        $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)->where('status', 'Hamil')->first();
-        if ($current_pregnancy == null) {
+
+        if ($request->first_date_last_period != null) {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('hari_pertama_haid_terakhir', $request->first_date_last_period)
+                    ->first();
+        } else {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('status', 'Hamil')
+                    ->first();
+        }
+
+        if (!$current_pregnancy) {
             return response()->json([
                 'status' => 'error',
-                'message' => __('message.not_pregnant')
-            ], Response::HTTP_BAD_REQUEST);
+                'message' => __('response.pregnancy_not_found'),
+            ], Response::HTTP_NOT_FOUND);
         }
     
         $pregnancy_log = RiwayatLogKehamilan::where('user_id', $user_id)
@@ -980,13 +1069,24 @@ class LogKehamilanController extends Controller
     public function deleteKicksCounter(Request $request, $id) {
         $user = Login::where('token', $request->header('userToken'))->first();
         $user_id = $user->id;
-        $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)->where('status', 'Hamil')->first();
-        if ($current_pregnancy == null) {
+        
+        if ($request->first_date_last_period != null) {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('hari_pertama_haid_terakhir', $request->first_date_last_period)
+                    ->first();
+        } else {
+            $current_pregnancy = RiwayatKehamilan::where('user_id', $user_id)
+                    ->where('status', 'Hamil')
+                    ->first();
+        }
+
+        if (!$current_pregnancy) {
             return response()->json([
                 'status' => 'error',
-                'message' => __('message.not_pregnant')
-            ], Response::HTTP_BAD_REQUEST);
+                'message' => __('response.pregnancy_not_found'),
+            ], Response::HTTP_NOT_FOUND);
         }
+
         $pregnancy_log = RiwayatLogKehamilan::where('user_id', $user_id)->where('riwayat_kehamilan_id', $current_pregnancy->id)->first();
         if (!$pregnancy_log) {
             return response()->json([

@@ -14,6 +14,8 @@ use App\Http\Controllers\Engine\MasterKehamilanController;
 use App\Http\Controllers\Engine\MasterVaccineController;
 use App\Http\Controllers\Engine\MasterVitaminController;
 use App\Http\Controllers\Engine\NotificationController;
+use App\Http\Controllers\Engine\ResyncDataController;
+use App\Http\Controllers\Engine\ResyncPendingDataController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -58,6 +60,8 @@ Route::middleware("api_key")->group(function() {
         Route::post('/notifications/token', [NotificationController::class, 'store']);
 
         Route::get('sync-data', [MainController::class, 'syncData']);
+        Route::post('resync-data', [ResyncDataController::class, 'resyncData']);
+        Route::post('resync-pending-data', [ResyncPendingDataController::class, 'ResyncPendingData']);
         Route::post('check-token', [AuthController::class, 'checkToken']);
         Route::get('get-profile', [AuthController::class, 'showProfile']);
         Route::patch('update-profile', [AuthController::class, 'updateProfile']);
